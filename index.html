@@ -1,0 +1,1924 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Expense Tracker</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg: #eef2ec;
+  --paper: #fbf9f3;
+  --ink: #16302b;
+  --ink-soft: #45564f;
+  --ocean: #0e5c68;
+  --ocean-deep: #0a4149;
+  --coral: #e8542a;
+  --coral-soft: #f7d9ce;
+  --sand: #cdb886;
+  --sand-light: #e8dfc6;
+  --line: rgba(22,48,43,0.14);
+  --line-strong: rgba(22,48,43,0.28);
+  --radius: 14px;
+  --green: #2d8a4e;
+  --green-soft: #d4edda;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Inter', sans-serif;
+  color:var(--ink);
+  background:var(--bg);
+  -webkit-font-smoothing:antialiased;
+}
+.app{ max-width:960px; margin:0 auto; padding:28px 20px 60px; }
+.mono{font-family:'IBM Plex Mono', monospace;}
+
+/* ---------- TRACKER BAR ---------- */
+.tracker-bar{
+  display:flex; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap;
+}
+.tracker-selector{
+  display:flex; align-items:center; gap:6px; background:var(--paper);
+  border:1px solid var(--line); border-radius:30px; padding:4px 6px 4px 14px;
+  font-family:'IBM Plex Mono', monospace; font-size:13px; flex:1; min-width:200px;
+}
+.tracker-selector select{
+  border:none; background:none; font-family:'IBM Plex Mono', monospace;
+  font-size:13px; font-weight:600; color:var(--coral); cursor:pointer;
+  flex:1; min-width:0; outline:none;
+}
+.tracker-bar-btn{
+  font-family:'IBM Plex Mono', monospace; font-size:12px; font-weight:600;
+  border:none; border-radius:20px; padding:8px 14px; cursor:pointer; white-space:nowrap;
+}
+.tracker-bar-btn.primary{ background:var(--ocean); color:#fff; }
+.tracker-bar-btn.primary:hover{ background:var(--ocean-deep); }
+.tracker-bar-btn.ghost{ background:none; border:1px solid var(--line-strong); color:var(--ink-soft); }
+.tracker-bar-btn.ghost:hover{ background:var(--paper); }
+.tracker-bar-btn.danger{ background:none; color:var(--coral); text-decoration:underline; font-weight:400; }
+
+/* ---------- HERO ---------- */
+.hero{
+  position:relative; border-radius:20px; padding:32px 28px;
+  background:linear-gradient(160deg, var(--ocean) 0%, var(--ocean-deep) 100%);
+  color:#f2f6f3; overflow:hidden; isolation:isolate;
+}
+.hero::after{
+  content:""; position:absolute; right:-60px; top:-60px; width:260px; height:260px;
+  border-radius:50%; background:radial-gradient(circle, rgba(232,84,42,0.35), transparent 70%); z-index:-1;
+}
+.hero-eyebrow{
+  font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--coral-soft); margin:0 0 6px;
+}
+.hero-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
+.hero h1{ font-family:'Fraunces', serif; font-weight:600; font-size:clamp(28px, 5vw, 40px); margin:0 0 4px; line-height:1.05; }
+.hero-sub{ margin:0 0 6px; color:rgba(242,246,243,0.75); font-size:14.5px; }
+.hero-now{
+  display:inline-block; margin:4px 0 18px; padding:5px 12px; border-radius:20px;
+  background:rgba(247,217,206,0.16); border:1px solid rgba(247,217,206,0.4);
+  font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--coral-soft);
+}
+.hero-totals{ text-align:right; }
+.hero-totals .big{ font-family:'IBM Plex Mono', monospace; font-size:28px; font-weight:600; color:#fff; }
+.hero-totals .small{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; color:rgba(242,246,243,0.65); margin-top:2px; }
+.hero-stats{ display:flex; flex-wrap:wrap; gap:28px; border-top:1px solid rgba(242,246,243,0.18); padding-top:18px; }
+.hero-stat .num{ font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:600; color:#fff; }
+.hero-stat .label{ font-size:11.5px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(242,246,243,0.6); margin-top:2px; }
+
+/* ---------- TABS ---------- */
+.tabs{ display:flex; gap:6px; margin:26px 0 20px; border-bottom:1px solid var(--line-strong); overflow-x:auto; }
+.tab-btn{
+  font-family:'IBM Plex Mono', monospace; font-size:13px; letter-spacing:0.04em; background:none; border:none;
+  padding:10px 4px; margin-right:22px; cursor:pointer; color:var(--ink-soft); position:relative; top:1px;
+  white-space:nowrap;
+}
+.tab-btn.active{ color:var(--coral); border-bottom:2px solid var(--coral); font-weight:600; }
+section[hidden]{display:none;}
+
+/* ---------- CARDS ---------- */
+.card{ background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); padding:20px; }
+.section-title{ font-family:'Fraunces', serif; font-size:19px; font-weight:600; margin:0 0 4px; }
+.section-hint{ font-size:13px; color:var(--ink-soft); margin:0 0 16px; }
+
+/* ---------- RANKING BAR ---------- */
+.bar-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; margin-bottom:7px; }
+.bar-label{ flex:0 0 120px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bar-track{ flex:1; height:7px; background:var(--line); border-radius:6px; overflow:hidden; }
+.bar-fill{ height:100%; background:var(--coral); border-radius:6px; }
+.bar-amt{ flex:0 0 auto; font-family:'IBM Plex Mono', monospace; font-size:12px; }
+
+/* ---------- ITINERARY TIMELINE ---------- */
+.timeline{ position:relative; margin-top:8px; }
+.timeline::before{ content:""; position:absolute; left:17px; top:6px; bottom:6px; width:0; border-left:2px dashed var(--line-strong); }
+.stop{ position:relative; display:flex; gap:16px; padding:14px 0; }
+.stop-mark{
+  flex:0 0 auto; width:36px; height:36px; border-radius:50%; background:var(--ocean); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono', monospace; font-size:13px;
+  font-weight:600; z-index:1; border:3px solid var(--bg);
+}
+.stop.current .stop-mark{ background:var(--coral); box-shadow:0 0 0 4px var(--coral-soft); }
+.stop-body{flex:1; min-width:0;}
+.stop-top{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.stop-name{font-weight:600; font-size:15.5px;}
+.stop-region{font-size:12.5px; color:var(--ink-soft);}
+.stop-dates{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ocean); margin-top:2px; }
+.stop-spend{ font-family:'IBM Plex Mono', monospace; font-size:16px; font-weight:600; color:var(--coral); white-space:nowrap; }
+.stop-remove{ background:none; border:none; color:var(--ink-soft); font-size:12px; cursor:pointer; text-decoration:underline; padding:0; margin-top:6px; }
+.now-badge{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:0.05em; background:var(--coral); color:#fff; padding:2px 8px; border-radius:10px; margin-left:8px; }
+
+/* ---------- CANDIDATES ---------- */
+.add-place-form{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.add-place-form input{
+  flex:1; min-width:140px; padding:9px 11px; border-radius:9px; border:1px solid var(--line-strong);
+  font-family:'Inter', sans-serif; font-size:13px; background:#fff;
+}
+.add-place-form button{
+  font-family:'IBM Plex Mono', monospace; font-size:12.5px; font-weight:600; background:var(--ocean); color:#fff;
+  border:none; border-radius:9px; padding:9px 14px; cursor:pointer; white-space:nowrap;
+}
+.candidate-search{
+  width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line-strong);
+  font-family:'Inter', sans-serif; font-size:13.5px; margin-bottom:14px; background:#fff;
+}
+.candidate-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:10px; max-height:340px; overflow-y:auto; padding-right:4px; }
+.candidate{ border:1px solid var(--line); border-radius:10px; padding:11px 12px; background:#fff; }
+.candidate-name{font-size:13.5px; font-weight:600;}
+.candidate-region{font-size:11.5px; color:var(--ink-soft); margin:2px 0 8px;}
+.candidate-rating{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--sand); }
+.add-btn{
+  font-family:'IBM Plex Mono', monospace; font-size:11.5px; background:var(--coral-soft); color:var(--coral);
+  border:none; border-radius:20px; padding:5px 11px; cursor:pointer; margin-top:6px;
+}
+.add-btn:hover{background:var(--coral); color:#fff;}
+
+/* ---------- EXPENSES TAB ---------- */
+.rates-row{ display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; margin-bottom:2px; }
+.rates-row .field{ max-width:170px; }
+.rates-note{ font-size:11.5px; color:var(--ink-soft); margin-top:10px; }
+
+.expense-form{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:6px; }
+.expense-form .full{grid-column:1/-1;}
+.field label{ display:block; font-size:11.5px; letter-spacing:0.04em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:5px; }
+.field input, .field select{
+  width:100%; padding:9px 10px; border-radius:9px; border:1px solid var(--line-strong);
+  font-family:'Inter', sans-serif; font-size:13.5px; background:#fff; color:var(--ink);
+}
+.amount-row{ display:grid; grid-template-columns:1fr 90px; gap:8px; }
+.submit-btn{
+  font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:600; background:var(--ocean); color:#fff;
+  border:none; border-radius:9px; padding:11px 18px; cursor:pointer; margin-top:4px;
+}
+.submit-btn:hover{background:var(--ocean-deep);}
+
+.pace-grid{ display:flex; gap:24px; flex-wrap:wrap; }
+.pace-stat .num{ font-family:'IBM Plex Mono', monospace; font-size:20px; font-weight:600; color:var(--ocean); }
+.pace-stat .label{ font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin-top:2px; }
+
+.breakdown{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:22px 0; }
+.breakdown-col .section-title{font-size:14px;}
+
+.expense-table{width:100%; border-collapse:collapse; margin-top:6px;}
+.expense-table th{
+  text-align:left; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft);
+  border-bottom:1px solid var(--line-strong); padding:8px 6px;
+}
+.expense-table td{ padding:10px 6px; border-bottom:1px solid var(--line); font-size:13px; vertical-align:top; }
+.expense-table td.amt{font-family:'IBM Plex Mono', monospace; font-weight:600; white-space:nowrap;}
+.currency-tag{ font-size:10.5px; color:var(--ink-soft); }
+.del-btn{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:15px; line-height:1; }
+.del-btn:hover{color:var(--coral);}
+.empty-state{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px; }
+
+/* ---------- OCR SECTION ---------- */
+.ocr-section{ border:2px dashed var(--line-strong); border-radius:var(--radius); padding:24px; text-align:center; margin-bottom:16px; cursor:pointer; transition:border-color 0.2s, background 0.2s; }
+.ocr-section:hover{ border-color:var(--ocean); background:rgba(14,92,104,0.03); }
+.ocr-section.dragover{ border-color:var(--coral); background:rgba(232,84,42,0.05); }
+.ocr-icon{ font-size:36px; margin-bottom:8px; }
+.ocr-text{ font-size:14px; color:var(--ink-soft); margin-bottom:4px; }
+.ocr-sub{ font-size:12px; color:var(--ink-soft); opacity:0.7; }
+.ocr-progress{ display:none; margin-top:14px; }
+.ocr-progress.active{ display:block; }
+.ocr-bar{ height:6px; background:var(--line); border-radius:6px; overflow:hidden; margin-bottom:6px; }
+.ocr-bar-fill{ height:100%; background:var(--ocean); border-radius:6px; transition:width 0.3s; width:0; }
+.ocr-status{ font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--ink-soft); }
+.ocr-input{ display:none; }
+
+/* ---------- SETTINGS TAB ---------- */
+.settings-group{ margin-bottom:24px; }
+.settings-group-title{ font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:10px; padding-bottom:6px; border-bottom:1px solid var(--line); }
+.setting-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.setting-row:last-child{ border-bottom:none; }
+.setting-label{ font-size:13.5px; }
+.setting-label small{ display:block; font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+.setting-input{ max-width:220px; }
+.setting-input input, .setting-input select{ width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--line-strong); font-size:13px; background:#fff; font-family:'Inter', sans-serif; }
+.categories-list{ display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.cat-row{ display:flex; align-items:center; gap:8px; }
+.cat-row input{ flex:1; padding:8px 10px; border-radius:8px; border:1px solid var(--line-strong); font-size:13px; background:#fff; font-family:'Inter', sans-serif; }
+.cat-row button{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:16px; padding:4px; }
+.cat-row button:hover{ color:var(--coral); }
+.add-cat-btn{
+  font-family:'IBM Plex Mono', monospace; font-size:12px; background:none;
+  border:1px dashed var(--line-strong); border-radius:8px; padding:8px 14px;
+  cursor:pointer; color:var(--ink-soft); margin-top:6px; width:100%;
+}
+.add-cat-btn:hover{ border-color:var(--ocean); color:var(--ocean); }
+
+/* ---------- MAP TAB ---------- */
+.map-toolbar{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; }
+.map-toggle{ display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-soft); }
+.map-wrap{
+  position:relative; background:#e4eef0; border-radius:12px; overflow:hidden;
+  border:1px solid var(--line); aspect-ratio: 0.97 / 1; max-height:560px;
+}
+.map-wrap svg{ width:100%; height:100%; display:block; cursor:crosshair; }
+.brazil-shape{ fill:var(--sand-light); stroke:var(--sand); stroke-width:0.6; }
+.pin{ cursor:pointer; }
+.pin circle.dot{ transition:r 0.15s; }
+.pin:hover circle.dot{ r:3.2; }
+.pin.itinerary circle.dot{ fill:var(--coral); stroke:#fff; stroke-width:0.5; }
+.pin.custom circle.dot{ fill:#b8860b; stroke:#fff; stroke-width:0.5; }
+.pin.candidate circle.dot{ fill:var(--ocean); fill-opacity:0.55; stroke:#fff; stroke-width:0.4; }
+.pin.current circle.pulse{
+  fill:none; stroke:var(--coral); stroke-width:0.6; opacity:0.7;
+  animation: pulse-ring 1.8s ease-out infinite;
+  transform-origin:center;
+}
+@keyframes pulse-ring{
+  0%{ r:2.4; opacity:0.7; }
+  100%{ r:8; opacity:0; }
+}
+.map-hint{ font-size:12px; color:var(--ink-soft); margin-top:10px; }
+.map-credit{ font-size:10.5px; color:var(--ink-soft); opacity:0.7; margin-top:4px; }
+
+/* ---------- MODAL / PANEL ---------- */
+.overlay{
+  position:fixed; inset:0; background:rgba(10,26,23,0.55); display:flex; align-items:center; justify-content:center;
+  z-index:50; padding:20px; overflow-y:auto;
+}
+.overlay[hidden]{ display:none !important; }
+.modal{
+  background:var(--paper); border-radius:16px; padding:22px; max-width:480px; width:100%;
+  max-height:calc(100vh - 40px); overflow-y:auto; margin:auto;
+}
+.modal h3{font-family:'Fraunces', serif; margin:0 0 14px; font-size:18px;}
+.modal-actions{display:flex; gap:10px; margin-top:16px;}
+.btn-secondary{
+  flex:1; background:none; border:1px solid var(--line-strong); border-radius:9px; padding:9px; cursor:pointer;
+  font-size:13px; font-family:'Inter', sans-serif;
+}
+.btn-primary{
+  flex:1; background:var(--coral); color:#fff; border:none; border-radius:9px; padding:9px; cursor:pointer;
+  font-size:13px; font-weight:600; font-family:'Inter', sans-serif;
+}
+.btn-primary:hover{ opacity:0.9; }
+.panel-meta{ font-size:12.5px; color:var(--ink-soft); margin-bottom:14px; }
+.panel-total{ font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:600; color:var(--coral); margin-bottom:2px; }
+.panel-total-sub{ font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--ink-soft); margin-bottom:16px; }
+.panel-expenses{ max-height:180px; overflow-y:auto; margin-bottom:14px; border-top:1px solid var(--line); padding-top:10px; }
+.panel-expense-row{ display:flex; justify-content:space-between; font-size:12.5px; padding:5px 0; border-bottom:1px solid var(--line); }
+
+/* ---------- OCR REVIEW MODAL ---------- */
+.ocr-review-list{ max-height:320px; overflow-y:auto; margin:10px 0; }
+.ocr-review-item{
+  display:flex; align-items:flex-start; gap:10px; padding:10px 0;
+  border-bottom:1px solid var(--line);
+}
+.ocr-review-item:last-child{ border-bottom:none; }
+.ocr-review-check{ margin-top:3px; }
+.ocr-review-details{ flex:1; min-width:0; }
+.ocr-review-desc{ font-size:13.5px; font-weight:500; }
+.ocr-review-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.ocr-review-amount{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--coral); font-size:14px; white-space:nowrap; }
+.ocr-review-cat{ padding:3px 8px; border-radius:6px; border:1px solid var(--line-strong); font-size:11px; background:#fff; cursor:pointer; }
+
+/* ---------- TOAST ---------- */
+.toast{
+  position:fixed; top:18px; left:50%; transform:translateX(-50%) translateY(-14px); z-index:60;
+  background:var(--ink); color:#fff; padding:12px 20px; border-radius:30px; font-size:13px;
+  font-family:'IBM Plex Mono', monospace; opacity:0; transition:opacity 0.25s, transform 0.25s; pointer-events:none;
+  box-shadow:0 8px 24px rgba(0,0,0,0.25);
+}
+.toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+.footer-note{ text-align:center; font-size:11.5px; color:var(--ink-soft); margin-top:30px; }
+.reset-link{ background:none; border:none; text-decoration:underline; color:var(--ink-soft); cursor:pointer; font-size:11.5px; font-family:'Inter', sans-serif; }
+
+@media (max-width:600px){
+  .app{ padding:16px 12px 50px; }
+  .expense-form{grid-template-columns:1fr;}
+  .expense-form .full{grid-column:1;}
+  .breakdown{grid-template-columns:1fr;}
+  .hero{padding:24px 18px;}
+  .hero-top{flex-direction:column;}
+  .hero-totals{text-align:left;}
+  .hero-stats{gap:16px;}
+  .pace-grid{gap:16px;}
+  .tabs{gap:2px;}
+  .tab-btn{margin-right:12px; font-size:12px; padding:8px 2px;}
+  .tracker-bar{flex-direction:column; align-items:stretch;}
+  .tracker-bar-btn{text-align:center;}
+  .tracker-selector{min-width:0;}
+  .ocr-section{padding:18px 14px;}
+  .modal{padding:18px; max-width:100%;}
+  .setting-row{flex-direction:column; align-items:stretch; gap:6px;}
+  .setting-input{max-width:100%;}
+  .rates-row{flex-direction:column;}
+  .rates-row .field{max-width:100%;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="tracker-bar">
+    <div class="tracker-selector">
+      <span style="color:var(--ink-soft);">Track:</span>
+      <select id="trackerSelect"></select>
+    </div>
+    <button class="tracker-bar-btn primary" id="newTrackerBtn">+ Nuevo tracker</button>
+    <button class="tracker-bar-btn ghost" id="settingsBtn">Config</button>
+  </div>
+
+  <div class="hero">
+    <div class="hero-top">
+      <div>
+        <p class="hero-eyebrow" id="heroEyebrow">Diario de ruta</p>
+        <h1 id="heroTitle">Expense Tracker</h1>
+        <p class="hero-sub" id="heroSub">Cargando datos...</p>
+        <div class="hero-now" id="heroNow"></div>
+      </div>
+      <div class="hero-totals">
+        <div class="big mono" id="statTotalBRL">R$ 0</div>
+        <div class="small mono" id="statTotalOther"></div>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="num mono" id="statStops">0</div>
+        <div class="label" id="statStopsLabel">Lugares</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num mono" id="statDay">–</div>
+        <div class="label" id="statDayLabel">Día</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num mono" id="statAvg">$ 0</div>
+        <div class="label" id="statAvgLabel">Promedio diario</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="dashboard">01 — Itinerario</button>
+    <button class="tab-btn" data-tab="expenses">02 — Gastos</button>
+    <button class="tab-btn" data-tab="map">03 — Mapa</button>
+    <button class="tab-btn" data-tab="settings">04 — Config</button>
+  </div>
+
+  <!-- DASHBOARD TAB -->
+  <section id="tab-dashboard">
+    <div class="card">
+      <p class="section-title">Ranking de gasto por lugar</p>
+      <p class="section-hint">Todo lo cargado hasta ahora, de mayor a menor.</p>
+      <div id="rankingBars"></div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <p class="section-title">Ruta confirmada</p>
+      <p class="section-hint">El orden en que vas pasando por cada lugar, y cuánto llevás gastado en cada uno.</p>
+      <div class="timeline" id="timeline"></div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <p class="section-title">Lugares posibles</p>
+      <p class="section-hint">Agregá los que quieras.</p>
+      <form class="add-place-form" id="addPlaceForm">
+        <input type="text" id="newPlaceName" placeholder="Nombre del lugar" required />
+        <input type="text" id="newPlaceRegion" placeholder="Región (opcional)" />
+        <button type="submit">+ Agregar</button>
+      </form>
+      <input type="text" class="candidate-search" id="candidateSearch" placeholder="Buscar lugar o región..." />
+      <div class="candidate-grid" id="candidateGrid"></div>
+    </div>
+  </section>
+
+  <!-- EXPENSES TAB -->
+  <section id="tab-expenses" hidden>
+    <div class="ocr-section" id="ocrSection">
+      <input type="file" id="ocrInput" class="ocr-input" accept="image/*" />
+      <div class="ocr-icon">📸</div>
+      <div class="ocr-text">Subí una captura de pantalla de tus movimientos</div>
+      <div class="ocr-sub">Funciona con extractos de ARQ, bancos, tarjetas, etc.</div>
+      <div class="ocr-progress" id="ocrProgress">
+        <div class="ocr-bar"><div class="ocr-bar-fill" id="ocrBarFill"></div></div>
+        <div class="ocr-status" id="ocrStatus">Procesando imagen...</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <p class="section-title">Tipo de cambio</p>
+      <p class="section-hint">Lo ponés vos — ajustalo cuando quieras.</p>
+      <div class="rates-row" id="ratesRow"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <p class="section-title">Cargar gasto</p>
+      <p class="section-hint">Sumalo apenas lo hagas, en la moneda que lo pagaste.</p>
+      <form class="expense-form" id="expenseForm">
+        <div class="field">
+          <label for="fDate">Fecha</label>
+          <input type="date" id="fDate" required />
+        </div>
+        <div class="field full">
+          <label for="fPlace">Lugar</label>
+          <select id="fPlace"></select>
+        </div>
+        <div class="field">
+          <label for="fCategory">Categoría</label>
+          <select id="fCategory"></select>
+        </div>
+        <div class="field">
+          <label for="fAmount">Monto</label>
+          <div class="amount-row">
+            <input type="number" id="fAmount" min="0" step="0.01" placeholder="0,00" required />
+            <select id="fCurrency"></select>
+          </div>
+        </div>
+        <div class="field full">
+          <label for="fNote">Nota (opcional)</label>
+          <input type="text" id="fNote" placeholder="Ej: cena en el centro" />
+        </div>
+        <div class="full">
+          <button type="submit" class="submit-btn">Agregar gasto</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <p class="section-title">Ritmo</p>
+      <p class="section-hint">Cómo venís gastando en promedio.</p>
+      <div class="pace-grid">
+        <div class="pace-stat"><div class="num mono" id="paceDay">–</div><div class="label" id="paceDayLabel">Día</div></div>
+        <div class="pace-stat"><div class="num mono" id="paceAvg">$ 0</div><div class="label" id="paceAvgLabel">Promedio/día</div></div>
+        <div class="pace-stat"><div class="num mono" id="paceToday">$ 0</div><div class="label">Gastado hoy</div></div>
+      </div>
+    </div>
+
+    <div class="breakdown">
+      <div class="card breakdown-col">
+        <p class="section-title">Por categoría</p>
+        <div id="byCategory"></div>
+      </div>
+      <div class="card breakdown-col">
+        <p class="section-title">Por lugar</p>
+        <div id="byPlace"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <p class="section-title">Historial</p>
+      <div id="expenseTableWrap"></div>
+    </div>
+  </section>
+
+  <!-- MAP TAB -->
+  <section id="tab-map" hidden>
+    <div class="card">
+      <p class="section-title">Tu mapa</p>
+      <p class="section-hint">Tocá cualquier punto del mapa para clavar un pin nuevo. Tocá un pin para ver o cargar sus gastos.</p>
+      <div class="map-toolbar">
+        <label class="map-toggle"><input type="checkbox" id="toggleCandidates" /> Mostrar lugares sugeridos</label>
+      </div>
+      <div class="map-wrap">
+        <svg id="brazilMap" viewBox="219.59 512.14 110.88 114.32" xmlns="http://www.w3.org/2000/svg">
+          <path class="brazil-shape" d="M286.631,618.464l5.402-10.391l0.198-8.73l10.079-6.501h5.645l4.435-7.512l0.804-14.418l-1.815-3.855l10.684-9.751l0.406-10.761l-14.514-7.105l-17.53-5.48l-8.264-0.812l2.221-4.669l-0.604-7.104l-1.808-0.596l-2.671,5.308l-1.4,1.754l-3.595-1.59l-12.093,4.261l-4.028-5.073l0.648-5.299l-3.804,3.872l-4.201-2.265l-0.424,0.597l0.009,1.841l3.622,1.945l-5.437,5.73l-3.432-0.034l-3.475-3.535l-3.933,0.121l-0.484,4.2l2.256,2.739l-2.663,8.532l-3.112,0.241l-4.953,3.13l-1.21,6.146l4.296,4.599l0.787-0.89l3.017-0.812l2.576,4.34l7.374-3.164l2.861,0.165l1.971,6.976l10.52,3.337l1.815,5.564l4.478,0.537l2.135,5.314l-1.443,4.729l1.884,2.474l-0.276,3.683l5.048-0.477l4.625,5.844l-0.363,4.105l2.74,2.316l-6.57,9.95L286.631,618.464L286.631,618.464z"></path>
+          <g id="pinLayer"></g>
+        </svg>
+      </div>
+      <p class="map-hint">Coral: itinerario. Dorado: pines propios. Celeste: sugeridos.</p>
+      <p class="map-credit">Contorno base: Al MacDonald / Fritz Lekschas (CC BY-SA 3.0)</p>
+    </div>
+  </section>
+
+  <!-- SETTINGS TAB -->
+  <section id="tab-settings" hidden>
+    <div class="card">
+      <p class="section-title">Configuración del tracker</p>
+      <p class="section-hint">Personalizá este tracker a tu gusto.</p>
+
+      <div class="settings-group">
+        <div class="settings-group-title">General</div>
+        <div class="setting-row">
+          <div class="setting-label">Nombre<small>Como aparece en el selector</small></div>
+          <div class="setting-input"><input type="text" id="setName" /></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Fecha de inicio<small>Para calcular "día de viaje"</small></div>
+          <div class="setting-input"><input type="date" id="setStartDate" /></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Moneda principal<small>La que se muestra en el hero</small></div>
+          <div class="setting-input"><select id="setPrimaryCurrency"></select></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">Excluir del promedio<small>Categorías que no se cuentan</small></div>
+          <div class="setting-input"><select id="setAvgExcluded" multiple style="height:80px;"></select></div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Monedas</div>
+        <div id="currenciesList"></div>
+        <button class="add-cat-btn" id="addCurrencyBtn">+ Agregar moneda</button>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Categorías</div>
+        <div class="categories-list" id="categoriesList"></div>
+        <button class="add-cat-btn" id="addCategoryBtn">+ Agregar categoría</button>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-group-title">Almacenamiento en la nube (JSONBin)</div>
+        <div class="setting-row">
+          <div class="setting-label">Bin ID<small>Dejá vacío para solo localStorage</small></div>
+          <div class="setting-input"><input type="text" id="setJsonbinId" placeholder="Ej: 66f1a2b3..." /></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-label">API Key<small>Obtenela gratis en jsonbin.io</small></div>
+          <div class="setting-input"><input type="password" id="setJsonbinKey" placeholder="$2a$10$..." /></div>
+        </div>
+        <div style="margin-top:10px;">
+          <button class="submit-btn" id="cloudSyncBtn" style="font-size:12px;">Sync now</button>
+          <button class="submit-btn" id="cloudPullBtn" style="font-size:12px; background:var(--green); margin-left:8px;">Pull from cloud</button>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; text-align:center;">
+        <button class="reset-link" id="exportBtn">Exportar datos (respaldo)</button>
+        <span style="margin:0 6px;">·</span>
+        <button class="reset-link" id="importBtn">Importar respaldo</button>
+        <input type="file" id="importFile" accept="application/json" hidden />
+      </div>
+    </div>
+  </section>
+
+  <div class="footer-note">
+    <button class="reset-link" id="resetBtn">Reiniciar datos del tracker</button>
+  </div>
+</div>
+
+<!-- Add-to-itinerary modal -->
+<div class="overlay" id="modalOverlay" hidden>
+  <div class="modal">
+    <h3 id="modalTitle">Agregar al itinerario</h3>
+    <div class="field" style="margin-bottom:12px;">
+      <label for="modalStart">Llegada</label>
+      <input type="date" id="modalStart" />
+    </div>
+    <div class="field">
+      <label for="modalEnd">Salida (opcional)</label>
+      <input type="date" id="modalEnd" />
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="modalCancel">Cancelar</button>
+      <button type="button" class="btn-primary" id="modalConfirm">Agregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- New pin modal -->
+<div class="overlay" id="pinModalOverlay" hidden>
+  <div class="modal">
+    <h3>Nuevo pin</h3>
+    <div class="field" style="margin-bottom:12px;">
+      <label for="pinName">Nombre del lugar</label>
+      <input type="text" id="pinName" placeholder="Ej: Praia do Rosa" />
+    </div>
+    <div class="field">
+      <label for="pinRegion">Región (opcional)</label>
+      <input type="text" id="pinRegion" placeholder="Ej: Santa Catarina" />
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="pinModalCancel">Cancelar</button>
+      <button type="button" class="btn-primary" id="pinModalConfirm">Clavar pin</button>
+    </div>
+  </div>
+</div>
+
+<!-- Place details panel -->
+<div class="overlay" id="placePanelOverlay" hidden>
+  <div class="modal">
+    <h3 id="panelTitle">Lugar</h3>
+    <div class="panel-meta" id="panelMeta"></div>
+    <div class="panel-total mono" id="panelTotal">$ 0</div>
+    <div class="panel-total-sub mono" id="panelTotalSub"></div>
+    <div class="panel-expenses" id="panelExpenses"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="panelClose">Cerrar</button>
+      <button type="button" class="btn-primary" id="panelAddExpense">Agregar gasto acá</button>
+    </div>
+    <div class="modal-actions" id="panelItineraryRow" style="margin-top:8px;">
+      <button type="button" class="btn-primary" id="panelAddItinerary" style="background:var(--ocean);">Agregar al itinerario</button>
+    </div>
+  </div>
+</div>
+
+<!-- OCR Review modal -->
+<div class="overlay" id="ocrReviewOverlay" hidden>
+  <div class="modal" style="max-width:540px;">
+    <h3>Gastos detectados</h3>
+    <p style="font-size:13px; color:var(--ink-soft); margin:0 0 10px;">Revisá y seleccioná cuáles importar.</p>
+    <div style="display:flex; gap:8px; margin-bottom:10px;">
+      <button class="btn-secondary" id="ocrSelectAll" style="flex:none; padding:6px 12px; font-size:12px;">Seleccionar todo</button>
+      <button class="btn-secondary" id="ocrDeselectAll" style="flex:none; padding:6px 12px; font-size:12px;">Quitar todo</button>
+    </div>
+    <div class="ocr-review-list" id="ocrReviewList"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="ocrReviewCancel">Cancelar</button>
+      <button type="button" class="btn-primary" id="ocrReviewConfirm">Importar seleccionados</button>
+    </div>
+  </div>
+</div>
+
+<!-- New tracker modal -->
+<div class="overlay" id="newTrackerOverlay" hidden>
+  <div class="modal">
+    <h3>Nuevo tracker</h3>
+    <div class="field" style="margin-bottom:12px;">
+      <label for="newTrackerName">Nombre</label>
+      <input type="text" id="newTrackerName" placeholder="Ej: Gastos personales 2026" />
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label for="newTrackerStart">Fecha de inicio (opcional)</label>
+      <input type="date" id="newTrackerStart" />
+    </div>
+    <div class="field">
+      <label for="newTrackerCurrency">Moneda principal</label>
+      <select id="newTrackerCurrency">
+        <option value="ARS">$ ARS</option>
+        <option value="BRL">R$ BRL</option>
+        <option value="USD">US$ USD</option>
+        <option value="EUR">EUR</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="newTrackerCancel">Cancelar</button>
+      <button type="button" class="btn-primary" id="newTrackerConfirm">Crear</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'expense-trackers-v1';
+const ACTIVE_KEY = 'expense-active-tracker';
+
+const DEFAULT_CATEGORIES = ['Vuelos','Alojamiento','Comida y bebida','Transporte','Actividades y tours','Compras','Otros'];
+const DEFAULT_CURRENCIES = [{code:'BRL',symbol:'R$'},{code:'ARS',symbol:'$'},{code:'USD',symbol:'US$'}];
+const DEFAULT_AVG_EXCLUDED = ['Alojamiento','Vuelos'];
+
+const SEED_PLACES = [
+  {id:'rio-de-janeiro', name:'Rio de Janeiro', region:'State of Rio de Janeiro', inItinerary:true, start:'2026-08-01', end:'2026-08-04', order:1, lat:-22.9068, lon:-43.1729},
+  {id:'paraty', name:'Paraty', region:'State of Rio de Janeiro', inItinerary:true, start:'2026-08-04', end:null, order:2, lat:-23.2178, lon:-44.7131},
+  {id:'general', name:'Gastos generales (vuelos, seguro, etc.)', region:'Todo el viaje', lat:null, lon:null},
+  {id:'tibau-do-sul', name:'Tibau do Sul', region:'State of Rio Grande do Norte', lat:-6.1928, lon:-35.0886},
+  {id:'praia-aguas-quentes', name:'Praia das Aguas Quentes', region:null, rating:'4.8', lat:-6.15, lon:-35.15},
+  {id:'itaunas', name:'Itaunas', region:'Conceicao da Barra - ES', lat:-18.3833, lon:-39.7167},
+  {id:'sao-sebastiao', name:'Sao Sebastiao', region:'State of Sao Paulo', lat:-23.8175, lon:-45.4064},
+  {id:'catedral-rio', name:'Catedral Metropolitana', region:'Rio de Janeiro', rating:'4.7', lat:-22.9105, lon:-43.1804},
+  {id:'outside-reef', name:'Outside Reef Marine Park', region:'Porto Seguro - BA', rating:'4.7', lat:-16.4497, lon:-39.0647},
+  {id:'serra-capivara', name:'Serra da Capivara', region:null, rating:'4.7', lat:-8.7, lon:-42.5},
+  {id:'morro-branco', name:'Beach of Morro Branco', region:null, rating:'4.8', lat:-4.1667, lon:-38.1167},
+  {id:'arembepe', name:'Arembepe', region:'Camacari - BA', lat:-12.7667, lon:-38.2},
+  {id:'barra-grande', name:'Barra Grande', region:'Marau - BA', lat:-14.2667, lon:-38.9167},
+  {id:'arraial-dajuda', name:'Arraial d\'Ajuda', region:'Porto Seguro - BA', lat:-16.4778, lon:-39.0733},
+  {id:'corumbau', name:'Praia de Corumbau', region:null, rating:'4.9', lat:-16.85, lon:-39.1667},
+  {id:'caravelas', name:'Caravelas', region:'State of Bahia', lat:-17.7125, lon:-39.2547},
+  {id:'serra-dos-orgaos', name:'Serra dos Orgaos', region:null, rating:'4.8', lat:-22.45, lon:-42.9833},
+  {id:'ilheus', name:'Ilheus', region:'State of Bahia', lat:-14.7889, lon:-39.0494},
+  {id:'marau', name:'Marau', region:'State of Bahia', lat:-14.1167, lon:-39.0},
+  {id:'itubera', name:'Itubera', region:'State of Bahia', lat:-13.7333, lon:-39.15},
+  {id:'caraiva', name:'Caraiva', region:'Porto Seguro - BA', lat:-16.6167, lon:-39.1167},
+  {id:'morro-de-sao-paulo', name:'Morro de Sao Paulo', region:'Cairu - BA', lat:-13.3833, lon:-38.9167},
+  {id:'ilha-boipeba', name:'Ilha de Boipeba', region:null, rating:'4.8', lat:-13.55, lon:-38.9167},
+  {id:'maceio', name:'Maceio', region:null, lat:-9.6658, lon:-35.735},
+  {id:'itacare', name:'Itacare', region:null, lat:-14.2789, lon:-38.9967},
+  {id:'sao-luis', name:'Sao Luis', region:null, lat:-2.5297, lon:-44.3028},
+  {id:'lencois-maranhenses', name:'Lencois Maranhenses', region:null, lat:-2.5, lon:-43.0},
+  {id:'ouro-preto', name:'Ouro Preto', region:null, lat:-20.3856, lon:-43.5035},
+  {id:'capitolio', name:'Capitolio', region:null, lat:-20.6667, lon:-46.0},
+  {id:'rio-das-ostras', name:'Rio das Ostras', region:'State of Rio de Janeiro', lat:-22.5297, lon:-41.9456},
+  {id:'saquarema', name:'Saquarema', region:'State of Rio de Janeiro', lat:-22.92, lon:-42.51},
+  {id:'cumuruxatiba', name:'Cumuruxatiba', region:'Prado - BA', lat:-17.0833, lon:-39.1667},
+  {id:'imbassai', name:'Imbassai', region:'Mata de Sao Joao - BA', lat:-12.4667, lon:-38.0}
+].map(p => ({ inItinerary:false, region:null, rating:null, start:null, end:null, order:null, lat:null, lon:null, source:'seed', ...p }));
+
+const PX = { xmin:227.59, xmax:322.469, ymin:520.14, ymax:618.464 };
+const LL = { lonmin:-73.99, lonmax:-34.79, latmin:-33.75, latmax:5.27 };
+
+function llToXY(lat, lon){
+  const x = PX.xmin + (lon - LL.lonmin) / (LL.lonmax - LL.lonmin) * (PX.xmax - PX.xmin);
+  const y = PX.ymin + (LL.latmax - lat) / (LL.latmax - LL.latmin) * (PX.ymax - PX.ymin);
+  return {x, y};
+}
+function xyToLL(x, y){
+  const lon = LL.lonmin + (x - PX.xmin) / (PX.xmax - PX.xmin) * (LL.lonmax - LL.lonmin);
+  const lat = LL.latmax - (y - PX.ymin) / (PX.ymax - PX.ymin) * (LL.latmax - LL.latmin);
+  return {lat, lon};
+}
+
+let trackers = [];
+let activeTrackerId = null;
+let pendingCandidateId = null;
+let pendingPinCoords = null;
+let activePanelPlaceId = null;
+let lastMilestone = 0;
+let ocrDetected = [];
+
+function t(){ return trackers.find(t=>t.id===activeTrackerId); }
+
+function slugify(s){
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'lugar';
+}
+const todayStr = () => new Date().toISOString().slice(0,10);
+const fmtDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('es-AR', {day:'2-digit', month:'short'}) : null;
+
+function curSymbol(code, tracker){
+  tracker = tracker || t();
+  if(!tracker) return code;
+  const c = tracker.currencies.find(x=>x.code===code);
+  return c ? c.symbol : code;
+}
+function fmtCur(amount, currency, tracker){
+  return curSymbol(currency, tracker) + ' ' + Math.round(amount||0).toLocaleString('es-AR');
+}
+
+function toMain(amount, currency, tracker){
+  tracker = tracker || t();
+  amount = Number(amount)||0;
+  if(!tracker) return amount;
+  const mc = tracker.primaryCurrency || 'BRL';
+  if(currency === mc) return amount;
+  const r = tracker.rates || {};
+  if(currency === 'BRL' && mc === 'ARS') return amount * (r.brlArs || 320);
+  if(currency === 'ARS' && mc === 'BRL') return amount / (r.brlArs || 320);
+  if(currency === 'USD' && mc === 'BRL') return amount * (r.usdBrl || 5.3);
+  if(currency === 'BRL' && mc === 'USD') return amount / (r.usdBrl || 5.3);
+  if(currency === 'ARS' && mc === 'USD') return (amount / (r.brlArs || 320)) / (r.usdBrl || 5.3);
+  if(currency === 'USD' && mc === 'ARS') return amount * (r.usdBrl || 5.3) * (r.brlArs || 320);
+  return amount;
+}
+function fromMain(amountMain, currency, tracker){
+  tracker = tracker || t();
+  if(!tracker) return amountMain;
+  const mc = tracker.primaryCurrency || 'BRL';
+  if(currency === mc) return amountMain;
+  const r = tracker.rates || {};
+  if(currency === 'BRL' && mc === 'ARS') return amountMain / (r.brlArs || 320);
+  if(currency === 'ARS' && mc === 'BRL') return amountMain * (r.brlArs || 320);
+  if(currency === 'USD' && mc === 'BRL') return amountMain / (r.usdBrl || 5.3);
+  if(currency === 'BRL' && mc === 'USD') return amountMain * (r.usdBrl || 5.3);
+  return amountMain;
+}
+
+function totalMain(tracker){
+  tracker = tracker || t();
+  if(!tracker) return 0;
+  return tracker.expenses.reduce((s,e)=>s+toMain(e.amount, e.currency||tracker.primaryCurrency, tracker),0);
+}
+function spentMainFor(placeId, tracker){
+  tracker = tracker || t();
+  if(!tracker) return 0;
+  return tracker.expenses.filter(e=>e.placeId===placeId).reduce((s,e)=>s+toMain(e.amount, e.currency||tracker.primaryCurrency, tracker),0);
+}
+function totalForAverage(tracker){
+  tracker = tracker || t();
+  if(!tracker) return 0;
+  return tracker.expenses.filter(e=>!(tracker.avgExcluded||[]).includes(e.category))
+    .reduce((s,e)=>s+toMain(e.amount, e.currency||tracker.primaryCurrency, tracker),0);
+}
+function currentStop(tracker){
+  tracker = tracker || t();
+  if(!tracker) return null;
+  const today = todayStr();
+  const itinerary = tracker.places.filter(p=>p.inItinerary && p.id!=='general').sort((a,b)=>(a.order||0)-(b.order||0));
+  let found = itinerary.find(p => p.start && p.start<=today && (!p.end || p.end>=today));
+  if(found) return found;
+  const past = itinerary.filter(p => p.start && p.start<=today);
+  return past.length ? past[past.length-1] : null;
+}
+
+function showToast(msg){
+  const t2 = document.getElementById('toast');
+  t2.textContent = msg;
+  t2.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t2.classList.remove('show'), 3200);
+}
+function checkMilestone(){
+  const tr = t(); if(!tr) return;
+  const total = totalMain(tr);
+  const mc = tr.primaryCurrency;
+  const step = mc === 'BRL' ? 500 : mc === 'ARS' ? 10000 : 50;
+  const m = Math.floor(total/step)*step;
+  if(m > lastMilestone){
+    lastMilestone = m;
+    showToast('Cruzaste los ' + fmtCur(m, mc, tr) + ' gastados');
+  }
+}
+
+// ========== DATA ==========
+function defaultTracker(name, primaryCurrency, startDate){
+  return {
+    id: 'tr-' + Date.now().toString(36),
+    name: name || 'Mi tracker',
+    startDate: startDate || todayStr(),
+    primaryCurrency: primaryCurrency || 'ARS',
+    categories: [...DEFAULT_CATEGORIES],
+    currencies: [...DEFAULT_CURRENCIES],
+    avgExcluded: [...DEFAULT_AVG_EXCLUDED],
+    rates: { brlArs: 320, usdBrl: 5.3 },
+    places: [],
+    expenses: []
+  };
+}
+
+function migrateOldData(){
+  try{
+    const pe = localStorage.getItem('brazil-expenses');
+    const pp = localStorage.getItem('brazil-places');
+    const pr = localStorage.getItem('brazil-rates');
+    if(pe || pp){
+      const tr = defaultTracker('Brasil, agosto 2026', 'BRL', '2026-08-01');
+      tr.id = 'tr-brazil-2026';
+      if(pp) tr.places = JSON.parse(pp);
+      if(pe) tr.expenses = JSON.parse(pe);
+      if(pr){
+        const r = JSON.parse(pr);
+        tr.rates = { brlArs: r.brlArs||320, usdBrl: r.usdBrl||5.3 };
+      }
+      return tr;
+    }
+  }catch(e){ console.error('Migration error', e); }
+  return null;
+}
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      trackers = JSON.parse(raw);
+    } else {
+      const migrated = migrateOldData();
+      if(migrated){
+        trackers = [migrated];
+      } else {
+        const tr = defaultTracker('Mi primer tracker', 'ARS');
+        tr.places = [...SEED_PLACES];
+        trackers = [tr];
+      }
+    }
+  }catch(e){
+    console.error('Load error', e);
+    trackers = [defaultTracker('Mi tracker', 'ARS')];
+  }
+  try{
+    activeTrackerId = localStorage.getItem(ACTIVE_KEY);
+    if(!trackers.some(t2=>t2.id===activeTrackerId)) activeTrackerId = trackers[0]?.id;
+  }catch(e){ activeTrackerId = trackers[0]?.id; }
+  if(!trackers.length){
+    const tr = defaultTracker('Mi tracker', 'ARS');
+    trackers = [tr];
+    activeTrackerId = tr.id;
+  }
+}
+function saveAll(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(trackers)); }catch(e){ console.error('Save error', e); }
+  try{ localStorage.setItem(ACTIVE_KEY, activeTrackerId); }catch(e){}
+}
+
+// ========== RENDER ==========
+function renderTrackerSelector(){
+  const sel = document.getElementById('trackerSelect');
+  sel.innerHTML = trackers.map(tr=>`<option value="${tr.id}" ${tr.id===activeTrackerId?'selected':''}>${tr.name}</option>`).join('');
+}
+
+function renderHero(){
+  const tr = t(); if(!tr) return;
+  const mc = tr.primaryCurrency;
+  const total = totalMain(tr);
+  document.getElementById('heroEyebrow').textContent = 'Expense Tracker';
+  document.getElementById('heroTitle').textContent = tr.name;
+
+  const itinerary = tr.places.filter(p=>p.inItinerary && p.id!=='general').sort((a,b)=>(a.order||0)-(b.order||0));
+  document.getElementById('heroSub').textContent = itinerary.length
+    ? itinerary.map(p=>p.name).join(' \u2192 ')
+    : 'Todavia no armaste el itinerario';
+
+  document.getElementById('statTotalBRL').textContent = fmtCur(total, mc, tr);
+
+  const otherCurrencies = tr.currencies.filter(c=>c.code!==mc);
+  document.getElementById('statTotalOther').textContent = otherCurrencies.map(c=>fmtCur(fromMain(total, c.code, tr), c.code, tr)).join(' \u00b7 ');
+
+  const itineraryCount = tr.places.filter(p=>p.inItinerary).length;
+  document.getElementById('statStops').textContent = itineraryCount;
+  document.getElementById('statStopsLabel').textContent = mc === 'BRL' ? 'Paradas' : 'Lugares';
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const startDate = new Date((tr.startDate || todayStr()) + 'T00:00:00');
+  const diffDays = Math.round((startDate - today) / 86400000);
+  const dayEl = document.getElementById('statDay');
+  const dayLabelEl = document.getElementById('statDayLabel');
+  let dayNum = 1;
+  if(diffDays > 0){
+    dayEl.textContent = diffDays;
+    dayLabelEl.textContent = 'Dias para empezar';
+  } else {
+    dayNum = Math.abs(diffDays) + 1;
+    dayEl.textContent = dayNum;
+    dayLabelEl.textContent = 'Dia';
+  }
+  document.getElementById('statAvg').textContent = fmtCur(totalForAverage(tr) / Math.max(dayNum,1), mc, tr);
+  document.getElementById('statAvgLabel').textContent = 'Promedio/dia';
+
+  const cur = currentStop(tr);
+  const nowEl = document.getElementById('heroNow');
+  if(cur){ nowEl.style.display='inline-block'; nowEl.textContent = 'Ahora en ' + cur.name; }
+  else { nowEl.style.display='none'; }
+}
+
+function renderRanking(){
+  const tr = t(); if(!tr) return;
+  const wrap = document.getElementById('rankingBars');
+  const mc = tr.primaryCurrency;
+  const map2 = {};
+  tr.expenses.forEach(e => { map2[e.placeId] = (map2[e.placeId]||0) + toMain(e.amount, e.currency||mc, tr); });
+  const entries = Object.entries(map2).sort((a,b)=>b[1]-a[1]);
+  const max = entries.length ? entries[0][1] : 1;
+  wrap.innerHTML = entries.length ? entries.map(([pid,amt]) => {
+    const p = tr.places.find(pl=>pl.id===pid);
+    return `<div class="bar-row">
+      <div class="bar-label">${p ? p.name : pid}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(amt/max*100).toFixed(0)}%"></div></div>
+      <div class="bar-amt">${fmtCur(amt,mc,tr)}</div>
+    </div>`;
+  }).join('') : '<div class="empty-state">Todavia no cargaste gastos.</div>';
+}
+
+function renderTimeline(){
+  const tr = t(); if(!tr) return;
+  const wrap = document.getElementById('timeline');
+  const mc = tr.primaryCurrency;
+  const itinerary = tr.places.filter(p=>p.inItinerary).sort((a,b)=>(a.order||0)-(b.order||0));
+  if(itinerary.length === 0){
+    wrap.innerHTML = '<div class="empty-state">Todavia no agregaste paradas al itinerario.</div>';
+    return;
+  }
+  const cur = currentStop(tr);
+  wrap.innerHTML = itinerary.map((p,i) => `
+    <div class="stop ${cur && cur.id===p.id ? 'current' : ''}">
+      <div class="stop-mark">${i+1}</div>
+      <div class="stop-body">
+        <div class="stop-top">
+          <div>
+            <div class="stop-name">${p.name}${cur && cur.id===p.id ? '<span class="now-badge">Aca</span>' : ''}</div>
+            ${p.region ? `<div class="stop-region">${p.region}</div>` : ''}
+          </div>
+          <div class="stop-spend mono">${fmtCur(spentMainFor(p.id,tr),mc,tr)}</div>
+        </div>
+        <div class="stop-dates">${p.start ? fmtDate(p.start) : '?'} ${p.end ? '\u2192 ' + fmtDate(p.end) : (p.start ? '\u2192 por definir' : '')}</div>
+        ${p.id !== 'general' ? `<button class="stop-remove" data-remove="${p.id}">Quitar del itinerario</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderCandidates(filterText){
+  const tr = t(); if(!tr) return;
+  const grid = document.getElementById('candidateGrid');
+  const filter = (filterText||'').toLowerCase();
+  const candidates = tr.places.filter(p => !p.inItinerary && p.id !== 'general' && (
+    p.name.toLowerCase().includes(filter) || (p.region||'').toLowerCase().includes(filter)
+  ));
+  if(candidates.length === 0){
+    grid.innerHTML = '<div class="empty-state">No hay lugares que coincidan.</div>';
+    return;
+  }
+  grid.innerHTML = candidates.map(p => `
+    <div class="candidate">
+      <div class="candidate-name">${p.name}</div>
+      <div class="candidate-region">${p.region || '&nbsp;'}</div>
+      ${p.rating ? `<div class="candidate-rating">\u2605 ${p.rating}</div>` : ''}
+      <div><button class="add-btn" data-add="${p.id}">+ Agregar al itinerario</button></div>
+    </div>
+  `).join('');
+}
+
+function renderPlaceSelect(){
+  const tr = t(); if(!tr) return;
+  const sel = document.getElementById('fPlace');
+  const itinerary = tr.places.filter(p=>p.inItinerary && p.id!=='general').sort((a,b)=>(a.order||0)-(b.order||0));
+  const general = tr.places.find(p=>p.id==='general');
+  const others = tr.places.filter(p=>!p.inItinerary && p.id!=='general');
+  const prev = sel.value;
+  sel.innerHTML = `
+    ${general ? `<optgroup label="General"><option value="${general.id}">${general.name}</option></optgroup>` : ''}
+    ${itinerary.length ? `<optgroup label="En el itinerario">
+      ${itinerary.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+    </optgroup>` : ''}
+    <optgroup label="Otros lugares">
+      ${others.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+    </optgroup>
+  `;
+  if(prev && tr.places.some(p=>p.id===prev)) sel.value = prev;
+}
+
+function renderCategorySelect(){
+  const tr = t(); if(!tr) return;
+  const sel = document.getElementById('fCategory');
+  sel.innerHTML = tr.categories.map(c=>`<option>${c}</option>`).join('');
+}
+
+function renderCurrencySelect(){
+  const tr = t(); if(!tr) return;
+  const sel = document.getElementById('fCurrency');
+  sel.innerHTML = tr.currencies.map(c=>`<option value="${c.code}">${c.symbol}</option>`).join('');
+  sel.value = tr.primaryCurrency;
+}
+
+function renderBreakdowns(){
+  const tr = t(); if(!tr) return;
+  const mc = tr.primaryCurrency;
+  const total = totalMain(tr) || 1;
+  const catMap = {};
+  tr.expenses.forEach(e => { catMap[e.category] = (catMap[e.category]||0) + toMain(e.amount, e.currency||mc, tr); });
+  const byCategory = document.getElementById('byCategory');
+  const catEntries = Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
+  byCategory.innerHTML = catEntries.length ? catEntries.map(([cat,amt]) => `
+    <div class="bar-row">
+      <div class="bar-label">${cat}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(amt/total*100).toFixed(0)}%"></div></div>
+      <div class="bar-amt">${fmtCur(amt,mc,tr)}</div>
+    </div>
+  `).join('') : '<div class="empty-state">Sin gastos todavia.</div>';
+
+  const placeMap = {};
+  tr.expenses.forEach(e => { placeMap[e.placeId] = (placeMap[e.placeId]||0) + toMain(e.amount, e.currency||mc, tr); });
+  const byPlace = document.getElementById('byPlace');
+  const placeEntries = Object.entries(placeMap).sort((a,b)=>b[1]-a[1]);
+  byPlace.innerHTML = placeEntries.length ? placeEntries.map(([pid,amt]) => {
+    const p = tr.places.find(pl=>pl.id===pid);
+    return `<div class="bar-row">
+      <div class="bar-label">${p ? p.name : pid}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(amt/total*100).toFixed(0)}%"></div></div>
+      <div class="bar-amt">${fmtCur(amt,mc,tr)}</div>
+    </div>`;
+  }).join('') : '<div class="empty-state">Sin gastos todavia.</div>';
+}
+
+function renderPace(){
+  const tr = t(); if(!tr) return;
+  const mc = tr.primaryCurrency;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const startDate = new Date((tr.startDate || todayStr()) + 'T00:00:00');
+  const diffDays = Math.round((today - startDate) / 86400000);
+  const dayNum = Math.max(diffDays + 1, 1);
+  document.getElementById('paceDay').textContent = diffDays >= 0 ? ('Dia ' + dayNum) : 'Aun no arranca';
+  document.getElementById('paceAvg').textContent = fmtCur(totalForAverage(tr) / dayNum, mc, tr);
+  document.getElementById('paceAvgLabel').textContent = 'Promedio/dia';
+  const todaySpend = tr.expenses.filter(e=>e.date===todayStr()).reduce((s,e)=>s+toMain(e.amount,e.currency||mc,tr),0);
+  document.getElementById('paceToday').textContent = fmtCur(todaySpend, mc, tr);
+}
+
+function renderExpenseTable(){
+  const tr = t(); if(!tr) return;
+  const mc = tr.primaryCurrency;
+  const wrap = document.getElementById('expenseTableWrap');
+  if(tr.expenses.length === 0){
+    wrap.innerHTML = '<div class="empty-state">Todavia no cargaste ningun gasto.</div>';
+    return;
+  }
+  const sorted = [...tr.expenses].sort((a,b)=> b.date.localeCompare(a.date));
+  wrap.innerHTML = `
+    <table class="expense-table">
+      <thead><tr><th>Fecha</th><th>Lugar</th><th>Categoria</th><th>Nota</th><th>Monto</th><th></th></tr></thead>
+      <tbody>
+        ${sorted.map(e => {
+          const p = tr.places.find(pl=>pl.id===e.placeId);
+          const cur = e.currency || mc;
+          return `<tr>
+            <td class="mono">${fmtDate(e.date)}</td>
+            <td>${p ? p.name : '\u2014'}</td>
+            <td>${e.category}</td>
+            <td>${e.note || '\u2014'}</td>
+            <td class="amt">${fmtCur(Number(e.amount), cur, tr)}${cur!==mc ? `<div class="currency-tag">\u2248 ${fmtCur(toMain(e.amount,cur,tr),mc,tr)}</div>` : ''}</td>
+            <td><button class="del-btn" data-del="${e.id}" title="Eliminar">\u2715</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderRates(){
+  const tr = t(); if(!tr) return;
+  const row = document.getElementById('ratesRow');
+  const mc = tr.primaryCurrency;
+  let html = '';
+  if(mc === 'BRL'){
+    html = `
+      <div class="field"><label>1 R$ = ? ARS</label><input type="number" id="rateBrlArs" min="0" step="1" value="${tr.rates.brlArs||''}" /></div>
+      <div class="field"><label>1 USD = ? R$ (ref)</label><input type="number" id="rateUsdBrl" min="0" step="0.01" value="${tr.rates.usdBrl||''}" /></div>
+    `;
+  } else if(mc === 'ARS'){
+    html = `
+      <div class="field"><label>1 R$ = ? ARS</label><input type="number" id="rateBrlArs" min="0" step="1" value="${tr.rates.brlArs||''}" /></div>
+      <div class="field"><label>1 USD = ? R$ (ref)</label><input type="number" id="rateUsdBrl" min="0" step="0.01" value="${tr.rates.usdBrl||''}" /></div>
+    `;
+  } else {
+    html = `<div class="field" style="max-width:100%;"><label>Configura las tasas en la seccion de Configuraci\u00f3n</label></div>`;
+  }
+  row.innerHTML = html;
+  const ba = document.getElementById('rateBrlArs');
+  const ub = document.getElementById('rateUsdBrl');
+  if(ba) ba.addEventListener('change', e => { const v = Number(e.target.value); if(v>0){ tr.rates.brlArs=v; renderAll(); saveAll(); }});
+  if(ub) ub.addEventListener('change', e => { const v = Number(e.target.value); if(v>0){ tr.rates.usdBrl=v; renderAll(); saveAll(); }});
+}
+
+function renderMap(){
+  const tr = t(); if(!tr) return;
+  const layer = document.getElementById('pinLayer');
+  const showSeedCandidates = document.getElementById('toggleCandidates').checked;
+  const cur = currentStop(tr);
+  const withCoords = tr.places.filter(p => {
+    if(p.lat == null || p.lon == null) return false;
+    if(p.inItinerary) return true;
+    if(p.source === 'custom') return true;
+    return showSeedCandidates;
+  });
+  layer.innerHTML = withCoords.map(p => {
+    const {x,y} = llToXY(p.lat, p.lon);
+    let kind = 'candidate';
+    if(p.inItinerary) kind = 'itinerary';
+    else if(p.source === 'custom') kind = 'custom';
+    const cls = 'pin ' + kind + (cur && cur.id===p.id ? ' current' : '');
+    const r = p.inItinerary ? 2.1 : (kind === 'custom' ? 2.0 : 1.5);
+    return `<g class="${cls}" data-id="${p.id}" transform="translate(${x.toFixed(2)},${y.toFixed(2)})">
+      ${cur && cur.id===p.id ? '<circle class="pulse" r="2.4"></circle>' : ''}
+      <circle class="dot" r="${r}"></circle>
+    </g>`;
+  }).join('');
+}
+
+function renderSettings(){
+  const tr = t(); if(!tr) return;
+  document.getElementById('setName').value = tr.name;
+  document.getElementById('setStartDate').value = tr.startDate || '';
+  const mc = tr.primaryCurrency;
+
+  const mcSel = document.getElementById('setPrimaryCurrency');
+  mcSel.innerHTML = tr.currencies.map(c=>`<option value="${c.code}" ${c.code===mc?'selected':''}>${c.symbol} ${c.code}</option>`).join('');
+
+  const avgSel = document.getElementById('setAvgExcluded');
+  avgSel.innerHTML = tr.categories.map(c=>`<option value="${c}" ${(tr.avgExcluded||[]).includes(c)?'selected':''}>${c}</option>`).join('');
+
+  const catList = document.getElementById('categoriesList');
+  catList.innerHTML = tr.categories.map((c,i) => `
+    <div class="cat-row">
+      <input type="text" value="${c}" data-cat-idx="${i}" class="cat-edit-input" />
+      <button data-cat-del="${i}" title="Eliminar">\u2715</button>
+    </div>
+  `).join('');
+
+  const curList = document.getElementById('currenciesList');
+  curList.innerHTML = tr.currencies.map((c,i) => `
+    <div class="cat-row">
+      <input type="text" value="${c.code}" data-cur-idx="${i}" data-field="code" class="cur-edit-input" style="max-width:80px;" />
+      <input type="text" value="${c.symbol}" data-cur-idx="${i}" data-field="symbol" class="cur-edit-input" style="max-width:80px;" />
+      <button data-cur-del="${i}" title="Eliminar">\u2715</button>
+    </div>
+  `).join('');
+
+  document.getElementById('setJsonbinId').value = tr.cloudBinId || '';
+  document.getElementById('setJsonbinKey').value = tr.cloudApiKey || '';
+}
+
+function renderAll(){
+  renderTrackerSelector();
+  renderHero();
+  renderRanking();
+  renderTimeline();
+  renderCandidates(document.getElementById('candidateSearch').value);
+  renderPlaceSelect();
+  renderCategorySelect();
+  renderCurrencySelect();
+  renderBreakdowns();
+  renderPace();
+  renderExpenseTable();
+  renderRates();
+  renderMap();
+  renderSettings();
+}
+
+// ========== PLACE PANEL ==========
+function openPlacePanel(placeId){
+  const tr = t(); if(!tr) return;
+  const mc = tr.primaryCurrency;
+  const p = tr.places.find(pl=>pl.id===placeId);
+  if(!p) return;
+  activePanelPlaceId = placeId;
+  document.getElementById('panelTitle').textContent = p.name;
+  let meta = p.region ? p.region : '';
+  if(p.inItinerary){
+    meta += (meta?' \u00b7 ':'') + (p.start ? fmtDate(p.start) : '?') + (p.end ? ' \u2192 ' + fmtDate(p.end) : (p.start ? ' \u2192 por definir' : ''));
+  } else {
+    meta += (meta?' \u00b7 ':'') + 'No esta en el itinerario';
+  }
+  document.getElementById('panelMeta').textContent = meta;
+  const tb = spentMainFor(placeId, tr);
+  document.getElementById('panelTotal').textContent = fmtCur(tb, mc, tr);
+  const otherCurrencies = tr.currencies.filter(c=>c.code!==mc);
+  document.getElementById('panelTotalSub').textContent = otherCurrencies.map(c=>fmtCur(fromMain(tb, c.code, tr), c.code, tr)).join(' \u00b7 ');
+  const ex = tr.expenses.filter(e=>e.placeId===placeId).sort((a,b)=>b.date.localeCompare(a.date));
+  const expWrap = document.getElementById('panelExpenses');
+  expWrap.innerHTML = ex.length ? ex.map(e => `
+    <div class="panel-expense-row">
+      <span>${fmtDate(e.date)} \u00b7 ${e.category}${e.note ? ' \u00b7 ' + e.note : ''}</span>
+      <span class="mono">${fmtCur(e.amount, e.currency||mc, tr)}</span>
+    </div>
+  `).join('') : '<div class="empty-state">Sin gastos cargados aca todavia.</div>';
+  document.getElementById('panelItineraryRow').style.display = p.inItinerary ? 'none' : 'flex';
+  document.getElementById('placePanelOverlay').hidden = false;
+}
+function closePlacePanel(){
+  document.getElementById('placePanelOverlay').hidden = true;
+  activePanelPlaceId = null;
+}
+
+// ========== OCR ==========
+function loadTesseract(){
+  return new Promise((resolve, reject) => {
+    if(window.Tesseract){ resolve(window.Tesseract); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = () => resolve(window.Tesseract);
+    s.onerror = () => reject(new Error('No se pudo cargar Tesseract.js'));
+    document.head.appendChild(s);
+  });
+}
+
+function parseOCRText(text){
+  const results = [];
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+
+  const datePatterns = [
+    /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/,
+    /(\d{1,2})\s+(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\w*(?:\s+(?:de\s+)?(\d{2,4}))?/i,
+  ];
+
+  const monthMap = {
+    ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,set:8,oct:9,nov:10,dic:11,
+    jan:0,fev:1,abr:3,mai:4,jun:5,jul:6,dez:11,
+    enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,setiembre:8,octubre:9,noviembre:10,diciembre:11
+  };
+
+  const amountPattern = /(?:R\$\s*|US?\$\s*|\$\s*|USD\s*|BRL\s*|ARS\s*)?([\d.,]+(?:\.\d{2})?)/;
+  const currencyHint = /(R\$|US?\$|USD|BRL|ARS|\$)/i;
+
+  let currentDate = null;
+
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+
+    let dateMatch = null;
+    for(const dp of datePatterns){
+      dateMatch = line.match(dp);
+      if(dateMatch) break;
+    }
+
+    if(dateMatch){
+      let day, month, year;
+      if(dateMatch[2] && /[a-z]/i.test(dateMatch[2])){
+        const m = monthMap[dateMatch[2].toLowerCase().slice(0,3)];
+        if(m !== undefined){
+          day = parseInt(dateMatch[1]);
+          month = m;
+          year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
+        }
+      } else {
+        day = parseInt(dateMatch[1]);
+        month = parseInt(dateMatch[2]) - 1;
+        year = parseInt(dateMatch[3]);
+        if(year < 100) year += 2000;
+      }
+      if(day && month >= 0 && month <= 11){
+        currentDate = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      }
+    }
+
+    const amountMatch = line.match(/[-\u2212]?\s*(R\$\s*|US?\$\s*|\$\s*|USD\s*)?([\d]+[.,]\d{2})/);
+    if(amountMatch && currentDate){
+      let rawAmount = amountMatch[2].replace('.','').replace(',','.');
+      const amount = parseFloat(rawAmount);
+      if(amount <= 0) continue;
+
+      let currency = 'BRL';
+      const hint = amountMatch[1] || '';
+      if(/US|USD/i.test(hint)) currency = 'USD';
+      else if(hint === '$ ') currency = 'ARS';
+
+      let desc = '';
+      for(let j = Math.max(0, i-2); j < i; j++){
+        const prev = lines[j].trim();
+        if(prev && !prev.match(/^\d{1,2}[\/\-]/) && !prev.match(/R\$|US\$|\$/) && prev !== line){
+          desc = prev;
+          break;
+        }
+      }
+      if(!desc){
+        const cleaned = line.replace(/[-\u2212]?\s*(R\$\s*|US?\$\s*|\$\s*|USD\s*)?[\d.,]+/,'').trim();
+        if(cleaned) desc = cleaned;
+      }
+
+      results.push({
+        date: currentDate,
+        amount: Math.abs(amount),
+        currency,
+        description: desc || 'Movimiento detectado',
+        category: guessCategory(desc),
+        selected: true
+      });
+    }
+  }
+
+  const seen = new Set();
+  return results.filter(r => {
+    const key = r.date + r.amount + r.currency;
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function guessCategory(desc){
+  const d = desc.toLowerCase();
+  if(/restaur|cafe|bar|comida|almuerzo|cena|padaria|lanch|food|eat|restaurant/i.test(d)) return 'Comida y bebida';
+  if(/uber|taxi|99|transfer|bus|metro|onibus|transport|aviao|voo|flight/i.test(d)) return 'Transporte';
+  if(/hotel|hostel|airbnb|alberg|pousada|accommodation/i.test(d)) return 'Alojamiento';
+  if(/shop|loja|compras|market|supermerc|store|farmacia/i.test(d)) return 'Compras';
+  if(/tour|activi|ingresso|museu|parque|passeio/i.test(d)) return 'Actividades y tours';
+  return 'Otros';
+}
+
+async function processOCRImage(file){
+  const progress = document.getElementById('ocrProgress');
+  const barFill = document.getElementById('ocrBarFill');
+  const status = document.getElementById('ocrStatus');
+  progress.classList.add('active');
+  barFill.style.width = '10%';
+  status.textContent = 'Cargando motor OCR...';
+
+  try{
+    const Tesseract = await loadTesseract();
+    barFill.style.width = '30%';
+    status.textContent = 'Analizando imagen...';
+
+    const result = await Tesseract.recognize(file, 'spa+por', {
+      logger: m => {
+        if(m.status === 'recognizing text'){
+          barFill.style.width = (30 + m.progress * 60) + '%';
+        }
+      }
+    });
+
+    barFill.style.width = '95%';
+    status.textContent = 'Parseando gastos...';
+
+    const text = result.data.text;
+    console.log('OCR text:', text);
+
+    const detected = parseOCRText(text);
+    barFill.style.width = '100%';
+
+    if(detected.length === 0){
+      status.textContent = 'No se detectaron gastos. Intenta con otra imagen.';
+      setTimeout(()=> progress.classList.remove('active'), 3000);
+      return;
+    }
+
+    ocrDetected = detected;
+    showOCRReview();
+    progress.classList.remove('active');
+  } catch(e){
+    console.error('OCR error:', e);
+    status.textContent = 'Error al procesar: ' + e.message;
+    setTimeout(()=> progress.classList.remove('active'), 3000);
+  }
+}
+
+function showOCRReview(){
+  const tr = t(); if(!tr) return;
+  const mc = tr.primaryCurrency;
+  const list = document.getElementById('ocrReviewList');
+  list.innerHTML = ocrDetected.map((r, i) => `
+    <div class="ocr-review-item">
+      <input type="checkbox" class="ocr-review-check" data-ocr-idx="${i}" ${r.selected?'checked':''} />
+      <div class="ocr-review-details">
+        <div class="ocr-review-desc">${r.description}</div>
+        <div class="ocr-review-meta">
+          <span>${fmtDate(r.date)}</span>
+          <span class="ocr-review-amount">${fmtCur(r.amount, r.currency, tr)}</span>
+          <select class="ocr-review-cat" data-ocr-cat="${i}">
+            ${tr.categories.map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('ocrReviewOverlay').hidden = false;
+}
+
+function importOCRSelected(){
+  const tr = t(); if(!tr) return;
+  const checks = document.querySelectorAll('.ocr-review-check');
+  let imported = 0;
+  checks.forEach(ch => {
+    const idx = parseInt(ch.dataset.ocrIdx);
+    if(!ch.checked) return;
+    const r = ocrDetected[idx];
+    if(!r) return;
+    const catSel = document.querySelector(`[data-ocr-cat="${idx}"]`);
+    tr.expenses.push({
+      id: 'exp-' + Date.now() + '-' + idx,
+      date: r.date,
+      placeId: 'general',
+      category: catSel ? catSel.value : r.category,
+      amount: r.amount,
+      currency: r.currency,
+      note: r.description,
+      source: 'ocr'
+    });
+    imported++;
+  });
+  document.getElementById('ocrReviewOverlay').hidden = true;
+  ocrDetected = [];
+  if(imported > 0){
+    renderAll();
+    saveAll();
+    checkMilestone();
+    showToast(imported + ' gasto' + (imported>1?'s':'') + ' importado' + (imported>1?'s':''));
+  }
+}
+
+// ========== EVENTS ==========
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    ['dashboard','expenses','map','settings'].forEach(tab => {
+      document.getElementById('tab-'+tab).hidden = btn.dataset.tab !== tab;
+    });
+  });
+});
+
+function goToTab(tabName){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tabName));
+  ['dashboard','expenses','map','settings'].forEach(tab => {
+    document.getElementById('tab-'+tab).hidden = tab !== tabName;
+  });
+}
+
+function goToExpensesTabFor(placeId){
+  goToTab('expenses');
+  renderPlaceSelect();
+  document.getElementById('fPlace').value = placeId;
+  document.getElementById('fAmount').focus();
+}
+
+document.getElementById('trackerSelect').addEventListener('change', e => {
+  activeTrackerId = e.target.value;
+  lastMilestone = 0;
+  renderAll();
+  saveAll();
+});
+
+document.getElementById('newTrackerBtn').addEventListener('click', () => {
+  document.getElementById('newTrackerName').value = '';
+  document.getElementById('newTrackerStart').value = todayStr();
+  document.getElementById('newTrackerOverlay').hidden = false;
+});
+document.getElementById('newTrackerCancel').addEventListener('click', () => {
+  document.getElementById('newTrackerOverlay').hidden = true;
+});
+document.getElementById('newTrackerOverlay').addEventListener('click', e => {
+  if(e.target.id === 'newTrackerOverlay') document.getElementById('newTrackerOverlay').hidden = true;
+});
+document.getElementById('newTrackerConfirm').addEventListener('click', () => {
+  const name = document.getElementById('newTrackerName').value.trim() || 'Nuevo tracker';
+  const start = document.getElementById('newTrackerStart').value;
+  const cur = document.getElementById('newTrackerCurrency').value;
+  const tr = defaultTracker(name, cur, start);
+  trackers.push(tr);
+  activeTrackerId = tr.id;
+  lastMilestone = 0;
+  document.getElementById('newTrackerOverlay').hidden = true;
+  renderAll();
+  saveAll();
+  showToast('Tracker "' + name + '" creado');
+});
+
+document.getElementById('settingsBtn').addEventListener('click', () => goToTab('settings'));
+
+document.getElementById('addPlaceForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const tr = t(); if(!tr) return;
+  const nameInput = document.getElementById('newPlaceName');
+  const regionInput = document.getElementById('newPlaceRegion');
+  const name = nameInput.value.trim();
+  if(!name) return;
+  const id = slugify(name) + '-' + Date.now().toString(36).slice(-4);
+  tr.places.push({ id, name, region: regionInput.value.trim() || null, rating:null, inItinerary:false, start:null, end:null, order:null, lat:null, lon:null, source:'custom' });
+  nameInput.value = ''; regionInput.value = '';
+  renderAll();
+  saveAll();
+  showToast('Agregado a "Lugares posibles"');
+});
+
+document.getElementById('candidateSearch').addEventListener('input', e => renderCandidates(e.target.value));
+
+document.getElementById('timeline').addEventListener('click', e => {
+  const id = e.target.dataset.remove;
+  if(!id) return;
+  const tr = t(); if(!tr) return;
+  const p = tr.places.find(pl=>pl.id===id);
+  if(p){ p.inItinerary = false; p.order = null; p.start = null; p.end = null; }
+  renderAll();
+  saveAll();
+});
+
+function openItineraryModal(id){
+  const tr = t(); if(!tr) return;
+  pendingCandidateId = id;
+  const p = tr.places.find(pl=>pl.id===id);
+  document.getElementById('modalTitle').textContent = 'Agregar "' + p.name + '"';
+  document.getElementById('modalStart').value = todayStr();
+  document.getElementById('modalEnd').value = '';
+  document.getElementById('modalOverlay').hidden = false;
+}
+document.getElementById('candidateGrid').addEventListener('click', e => {
+  const id = e.target.dataset.add;
+  if(!id) return;
+  openItineraryModal(id);
+});
+document.getElementById('modalCancel').addEventListener('click', () => {
+  document.getElementById('modalOverlay').hidden = true;
+  pendingCandidateId = null;
+});
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if(e.target.id === 'modalOverlay'){
+    document.getElementById('modalOverlay').hidden = true;
+    pendingCandidateId = null;
+  }
+});
+document.getElementById('modalConfirm').addEventListener('click', () => {
+  if(!pendingCandidateId) return;
+  const tr = t(); if(!tr) return;
+  const p = tr.places.find(pl=>pl.id===pendingCandidateId);
+  if(!p){ document.getElementById('modalOverlay').hidden = true; pendingCandidateId = null; return; }
+  const start = document.getElementById('modalStart').value;
+  const end = document.getElementById('modalEnd').value;
+  const maxOrder = Math.max(0, ...tr.places.filter(pl=>pl.inItinerary).map(pl=>pl.order||0));
+  p.inItinerary = true;
+  p.start = start || null;
+  p.end = end || null;
+  p.order = maxOrder + 1;
+  document.getElementById('modalOverlay').hidden = true;
+  pendingCandidateId = null;
+  renderAll();
+  saveAll();
+  showToast('"' + p.name + '" agregado al itinerario');
+});
+
+document.getElementById('expenseForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const tr = t(); if(!tr) return;
+  const entry = {
+    id: 'exp-' + Date.now(),
+    date: document.getElementById('fDate').value,
+    placeId: document.getElementById('fPlace').value,
+    category: document.getElementById('fCategory').value,
+    amount: Number(document.getElementById('fAmount').value),
+    currency: document.getElementById('fCurrency').value,
+    note: document.getElementById('fNote').value.trim()
+  };
+  tr.expenses.push(entry);
+  e.target.reset();
+  document.getElementById('fDate').value = todayStr();
+  document.getElementById('fCurrency').value = tr.primaryCurrency;
+  renderAll();
+  saveAll();
+  checkMilestone();
+});
+
+document.getElementById('expenseTableWrap').addEventListener('click', e => {
+  const id = e.target.dataset.del;
+  if(!id) return;
+  const tr = t(); if(!tr) return;
+  tr.expenses = tr.expenses.filter(ex => ex.id !== id);
+  renderAll();
+  saveAll();
+});
+
+document.getElementById('ocrSection').addEventListener('click', () => {
+  document.getElementById('ocrInput').click();
+});
+document.getElementById('ocrInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  processOCRImage(file);
+  e.target.value = '';
+});
+const ocrSection = document.getElementById('ocrSection');
+ocrSection.addEventListener('dragover', e => { e.preventDefault(); ocrSection.classList.add('dragover'); });
+ocrSection.addEventListener('dragleave', () => ocrSection.classList.remove('dragover'));
+ocrSection.addEventListener('drop', e => {
+  e.preventDefault();
+  ocrSection.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')) processOCRImage(file);
+});
+
+document.getElementById('ocrSelectAll').addEventListener('click', () => {
+  document.querySelectorAll('.ocr-review-check').forEach(c=>c.checked=true);
+});
+document.getElementById('ocrDeselectAll').addEventListener('click', () => {
+  document.querySelectorAll('.ocr-review-check').forEach(c=>c.checked=false);
+});
+document.getElementById('ocrReviewCancel').addEventListener('click', () => {
+  document.getElementById('ocrReviewOverlay').hidden = true;
+  ocrDetected = [];
+});
+document.getElementById('ocrReviewConfirm').addEventListener('click', importOCRSelected);
+
+// Settings events
+document.getElementById('setName').addEventListener('change', e => {
+  const tr = t(); if(!tr) return;
+  tr.name = e.target.value.trim() || tr.name;
+  renderAll(); saveAll();
+});
+document.getElementById('setStartDate').addEventListener('change', e => {
+  const tr = t(); if(!tr) return;
+  tr.startDate = e.target.value;
+  renderAll(); saveAll();
+});
+document.getElementById('setPrimaryCurrency').addEventListener('change', e => {
+  const tr = t(); if(!tr) return;
+  tr.primaryCurrency = e.target.value;
+  renderAll(); saveAll();
+});
+document.getElementById('setAvgExcluded').addEventListener('change', e => {
+  const tr = t(); if(!tr) return;
+  tr.avgExcluded = Array.from(e.target.selectedOptions).map(o=>o.value);
+  renderAll(); saveAll();
+});
+
+document.getElementById('categoriesList').addEventListener('change', e => {
+  const tr = t(); if(!tr) return;
+  if(e.target.classList.contains('cat-edit-input')){
+    const idx = parseInt(e.target.dataset.catIdx);
+    tr.categories[idx] = e.target.value.trim() || tr.categories[idx];
+    renderAll(); saveAll();
+  }
+});
+document.getElementById('categoriesList').addEventListener('click', e => {
+  const tr = t(); if(!tr) return;
+  if(e.target.dataset.catDel !== undefined){
+    const idx = parseInt(e.target.dataset.catDel);
+    tr.categories.splice(idx, 1);
+    tr.avgExcluded = tr.avgExcluded.filter(c => tr.categories.includes(c));
+    renderAll(); saveAll();
+  }
+});
+document.getElementById('addCategoryBtn').addEventListener('click', () => {
+  const tr = t(); if(!tr) return;
+  tr.categories.push('Nueva categoria');
+  renderAll(); saveAll();
+});
+
+document.getElementById('currenciesList').addEventListener('change', e => {
+  const tr = t(); if(!tr) return;
+  if(e.target.classList.contains('cur-edit-input')){
+    const idx = parseInt(e.target.dataset.curIdx);
+    const field = e.target.dataset.field;
+    tr.currencies[idx][field] = e.target.value.trim();
+    renderAll(); saveAll();
+  }
+});
+document.getElementById('currenciesList').addEventListener('click', e => {
+  const tr = t(); if(!tr) return;
+  if(e.target.dataset.curDel !== undefined){
+    const idx = parseInt(e.target.dataset.curDel);
+    if(tr.currencies.length <= 1){ showToast('Necesitas al menos una moneda'); return; }
+    tr.currencies.splice(idx, 1);
+    renderAll(); saveAll();
+  }
+});
+document.getElementById('addCurrencyBtn').addEventListener('click', () => {
+  const tr = t(); if(!tr) return;
+  tr.currencies.push({code:'NEW',symbol:'$'});
+  renderAll(); saveAll();
+});
+
+// Cloud sync
+document.getElementById('cloudSyncBtn').addEventListener('click', async () => {
+  const tr = t(); if(!tr) return;
+  const binId = document.getElementById('setJsonbinId').value.trim();
+  const apiKey = document.getElementById('setJsonbinKey').value.trim();
+  if(!binId || !apiKey){ showToast('Completá Bin ID y API Key'); return; }
+  tr.cloudBinId = binId;
+  tr.cloudApiKey = apiKey;
+  saveAll();
+  try{
+    const resp = await fetch('https://api.jsonbin.io/v3/b/' + binId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
+      body: JSON.stringify({ trackers, activeTrackerId })
+    });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    showToast('Sync completado');
+  }catch(e){
+    showToast('Error sync: ' + e.message);
+  }
+});
+document.getElementById('cloudPullBtn').addEventListener('click', async () => {
+  const binId = document.getElementById('setJsonbinId').value.trim();
+  const apiKey = document.getElementById('setJsonbinKey').value.trim();
+  if(!binId || !apiKey){ showToast('Completá Bin ID y API Key'); return; }
+  try{
+    const resp = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest', {
+      headers: { 'X-Master-Key': apiKey }
+    });
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const cloud = data.record;
+    if(!cloud.trackers || !Array.isArray(cloud.trackers)) throw new Error('Formato invalido');
+    if(!confirm('Esto reemplaza los datos locales con los de la nube. Seguro?')) return;
+    trackers = cloud.trackers;
+    activeTrackerId = cloud.activeTrackerId || trackers[0]?.id;
+    renderAll();
+    saveAll();
+    showToast('Datos descargados de la nube');
+  }catch(e){
+    showToast('Error pull: ' + e.message);
+  }
+});
+
+// Map events
+document.getElementById('toggleCandidates').addEventListener('change', renderMap);
+
+function svgPointFromEvent(svg, evt){
+  const pt = svg.createSVGPoint();
+  const touch = evt.touches && evt.touches[0];
+  pt.x = touch ? touch.clientX : evt.clientX;
+  pt.y = touch ? touch.clientY : evt.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+document.getElementById('brazilMap').addEventListener('click', e => {
+  const svg = document.getElementById('brazilMap');
+  const pinEl = e.target.closest('.pin');
+  if(pinEl){
+    openPlacePanel(pinEl.dataset.id);
+    return;
+  }
+  const pt = svgPointFromEvent(svg, e);
+  const {lat, lon} = xyToLL(pt.x, pt.y);
+  pendingPinCoords = {lat, lon};
+  document.getElementById('pinName').value = '';
+  document.getElementById('pinRegion').value = '';
+  document.getElementById('pinModalOverlay').hidden = false;
+  setTimeout(()=>document.getElementById('pinName').focus(), 30);
+});
+
+document.getElementById('pinModalCancel').addEventListener('click', () => {
+  document.getElementById('pinModalOverlay').hidden = true;
+  pendingPinCoords = null;
+});
+document.getElementById('pinModalOverlay').addEventListener('click', e => {
+  if(e.target.id === 'pinModalOverlay'){
+    document.getElementById('pinModalOverlay').hidden = true;
+    pendingPinCoords = null;
+  }
+});
+document.getElementById('pinModalConfirm').addEventListener('click', () => {
+  const tr = t(); if(!tr) return;
+  const name = document.getElementById('pinName').value.trim();
+  if(!name || !pendingPinCoords) return;
+  const region = document.getElementById('pinRegion').value.trim();
+  const id = slugify(name) + '-' + Date.now().toString(36).slice(-4);
+  tr.places.push({ id, name, region: region || null, rating:null, inItinerary:false, start:null, end:null, order:null, lat:pendingPinCoords.lat, lon:pendingPinCoords.lon, source:'custom' });
+  document.getElementById('pinModalOverlay').hidden = true;
+  pendingPinCoords = null;
+  renderAll();
+  saveAll();
+  openPlacePanel(id);
+});
+
+document.getElementById('panelClose').addEventListener('click', closePlacePanel);
+document.getElementById('placePanelOverlay').addEventListener('click', e => {
+  if(e.target.id === 'placePanelOverlay') closePlacePanel();
+});
+document.getElementById('panelAddExpense').addEventListener('click', () => {
+  const id = activePanelPlaceId;
+  closePlacePanel();
+  if(id) goToExpensesTabFor(id);
+});
+document.getElementById('panelAddItinerary').addEventListener('click', () => {
+  const id = activePanelPlaceId;
+  closePlacePanel();
+  if(id) openItineraryModal(id);
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  ['modalOverlay','pinModalOverlay','placePanelOverlay','ocrReviewOverlay','newTrackerOverlay'].forEach(id => {
+    if(!document.getElementById(id).hidden) document.getElementById(id).hidden = true;
+  });
+  pendingCandidateId = null;
+  pendingPinCoords = null;
+});
+
+// Export/Import
+document.getElementById('exportBtn').addEventListener('click', () => {
+  const backup = { exportedAt: new Date().toISOString(), trackers, activeTrackerId };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'expense-tracker-respaldo-' + todayStr() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Respaldo descargado');
+});
+
+document.getElementById('importBtn').addEventListener('click', () => {
+  document.getElementById('importFile').click();
+});
+document.getElementById('importFile').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if(data.trackers && Array.isArray(data.trackers)){
+        if(!confirm('Esto reemplaza los datos actuales. Seguro?')) return;
+        trackers = data.trackers;
+        activeTrackerId = data.activeTrackerId || trackers[0]?.id;
+      } else if(Array.isArray(data.places) || Array.isArray(data.expenses)){
+        if(!confirm('Formato v1 detectado. Se importara como tracker. Seguro?')) return;
+        const tr = defaultTracker('Importado', 'BRL');
+        if(data.places) tr.places = data.places;
+        if(data.expenses) tr.expenses = data.expenses;
+        if(data.rates) tr.rates = data.rates;
+        trackers = [tr];
+        activeTrackerId = tr.id;
+      } else {
+        showToast('Formato no reconocido');
+        return;
+      }
+      renderAll();
+      saveAll();
+      showToast('Respaldo importado');
+    }catch(err){
+      showToast('No se pudo leer el archivo');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  const tr = t(); if(!tr) return;
+  if(!confirm('Esto borra todos los gastos y lugares de este tracker. Seguro?')) return;
+  tr.places = [...SEED_PLACES];
+  tr.expenses = [];
+  renderAll();
+  saveAll();
+});
+
+// ========== INIT ==========
+(function init(){
+  loadData();
+  document.getElementById('fDate').value = todayStr();
+  renderAll();
+})();
+</script>
+</body>
+</html>
