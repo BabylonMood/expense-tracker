@@ -297,6 +297,7 @@ section[hidden]{display:none;}
 .ocr-review-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 .ocr-review-amount{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--coral); font-size:14px; white-space:nowrap; }
 .ocr-review-cat{ padding:3px 8px; border-radius:6px; border:1px solid var(--line-strong); font-size:11px; background:#fff; cursor:pointer; }
+.ocr-review-split{ margin-top:4px; }
 
 /* ---------- TOAST ---------- */
 .toast{
@@ -1150,12 +1151,13 @@ function renderExpenseTable(){
         ${sorted.map(e => {
           const p = tr.places.find(pl=>pl.id===e.placeId);
           const cur = e.currency || mc;
+          const splitTag = e.splitCount && e.splitCount > 1 ? `<div class="currency-tag" style="color:var(--green);">\u2248 original: ${fmtCur(e.splitOriginal||e.amount*e.splitCount, cur, tr)} / ${e.splitCount}</div>` : '';
           return `<tr>
             <td class="mono">${fmtDate(e.date)}</td>
             <td>${p ? p.name : '\u2014'}</td>
             <td>${e.category}</td>
             <td>${e.note || '\u2014'}</td>
-            <td class="amt">${fmtCur(Number(e.amount), cur, tr)}${cur!==mc ? `<div class="currency-tag">\u2248 ${fmtCur(toMain(e.amount,cur,tr),mc,tr)}</div>` : ''}</td>
+            <td class="amt">${fmtCur(Number(e.amount), cur, tr)}${cur!==mc ? `<div class="currency-tag">\u2248 ${fmtCur(toMain(e.amount,cur,tr),mc,tr)}</div>` : ''}${splitTag}</td>
             <td class="actions-cell"><button class="edit-btn" data-edit="${e.id}" title="Editar">\u270e</button><button class="del-btn" data-del="${e.id}" title="Eliminar">\u2715</button></td>
           </tr>`;
         }).join('')}
@@ -1315,89 +1317,148 @@ function parseOCRText(text){
   const results = [];
   const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
 
-  const datePatterns = [
-    /(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/,
-    /(\d{1,2})\s+(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\w*(?:\s+(?:de\s+)?(\d{2,4}))?/i,
-  ];
-
   const monthMap = {
     ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,set:8,oct:9,nov:10,dic:11,
-    jan:0,fev:1,abr:3,mai:4,jun:5,jul:6,dez:11,
-    enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,setiembre:8,octubre:9,noviembre:10,diciembre:11
+    jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,jul:6,ago:7,set:8,out:9,nov:10,dez:11,
+    enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,setiembre:8,octubre:9,noviembre:10,diciembre:11,
+    january:0,february:1,march:2,april:3,may:4,june:5,july:6,august:7,september:8,october:9,november:10,december:11
   };
 
-  const amountPattern = /(?:R\$\s*|US?\$\s*|\$\s*|USD\s*|BRL\s*|ARS\s*)?([\d.,]+(?:\.\d{2})?)/;
-  const currencyHint = /(R\$|US?\$|USD|BRL|ARS|\$)/i;
+  const monthNames = Object.keys(monthMap);
 
-  let currentDate = null;
+  function tryParseDate(line){
+    let m;
+
+    m = line.match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/);
+    if(m){
+      let day=parseInt(m[1]), month=parseInt(m[2])-1, year=parseInt(m[3]);
+      if(year<100) year+=2000;
+      if(day>=1&&day<=31&&month>=0&&month<=11) return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    }
+
+    m = line.match(/(\d{1,2})\s*(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|january|february|march|april|may|june|july|august|september|october|november|december)\w*(?:\s*(?:de\s+)?(\d{2,4}))?/i);
+    if(m){
+      const key = m[2].toLowerCase().slice(0,3);
+      const month = monthMap[key] ?? monthMap[m[2].toLowerCase()];
+      if(month !== undefined){
+        let day=parseInt(m[1]), year=m[3]?parseInt(m[3]):new Date().getFullYear();
+        if(year<100) year+=2000;
+        if(day>=1&&day<=31) return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      }
+    }
+
+    m = line.match(/(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|january|february|march|april|may|june|july|august|september|october|november|december)\w*\s*(?:de\s+)?(\d{1,2})(?:\s*,?\s*(\d{2,4}))?/i);
+    if(m){
+      const key = m[1].toLowerCase().slice(0,3);
+      const month = monthMap[key] ?? monthMap[m[1].toLowerCase()];
+      if(month !== undefined){
+        let day=parseInt(m[2]), year=m[3]?parseInt(m[3]):new Date().getFullYear();
+        if(year<100) year+=2000;
+        if(day>=1&&day<=31) return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      }
+    }
+
+    m = line.match(/(\d{1,2})\s*(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|january|february|march|april|may|june|july|august|september|october|november|december)\w*/i);
+    if(m){
+      const key = m[2].toLowerCase().slice(0,3);
+      const month = monthMap[key] ?? monthMap[m[2].toLowerCase()];
+      if(month !== undefined){
+        let day=parseInt(m[1]), year=new Date().getFullYear();
+        if(day>=1&&day<=31) return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      }
+    }
+
+    return null;
+  }
+
+  function tryParseAmount(line){
+    let m;
+
+    m = line.match(/[-\u2212]?\s*(R\$\s*|US?\$\s*|\$\s*|USD\s*|EUR\s*)\s*([\d.,]+)/i);
+    if(m){
+      let raw = m[2].replace(/\./g,'').replace(',','.');
+      const val = parseFloat(raw);
+      if(!isNaN(val) && val > 0){
+        let cur = 'BRL';
+        if(/usd|us\$/i.test(m[1])) cur='USD';
+        else if(/eur/i.test(m[1])) cur='EUR';
+        else if(/^\$\s*$/.test(m[1]) || m[1]==='$ ') cur='ARS';
+        return {amount:Math.abs(val), currency:cur};
+      }
+    }
+
+    m = line.match(/[-\u2212]?\s*([\d]{1,6}[.,]\d{1,2})\s*(USD|BRL|EUR|ARS|US\$|R\$|\$)?/i);
+    if(m){
+      let raw = m[1].replace(/\./g,'').replace(',','.');
+      const val = parseFloat(raw);
+      if(!isNaN(val) && val > 0){
+        let cur = 'BRL';
+        if(m[2]){
+          if(/usd|us\$/i.test(m[2])) cur='USD';
+          else if(/eur/i.test(m[2])) cur='EUR';
+          else if(/\$/.test(m[2]) && !/r\$/.test(m[2])) cur='ARS';
+        }
+        return {amount:Math.abs(val), currency:cur};
+      }
+    }
+
+    m = line.match(/[-\u2212]?\s*([\d]{1,6}[.,]\d{1,2})\b/);
+    if(m){
+      let raw = m[1].replace(/\./g,'').replace(',','.');
+      const val = parseFloat(raw);
+      if(!isNaN(val) && val > 0) return {amount:Math.abs(val), currency:null};
+    }
+
+    return null;
+  }
+
+  let currentDate = todayStr();
+  let lastCurrency = null;
 
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
 
-    let dateMatch = null;
-    for(const dp of datePatterns){
-      dateMatch = line.match(dp);
-      if(dateMatch) break;
+    const dateResult = tryParseDate(line);
+    if(dateResult){
+      currentDate = dateResult;
     }
 
-    if(dateMatch){
-      let day, month, year;
-      if(dateMatch[2] && /[a-z]/i.test(dateMatch[2])){
-        const m = monthMap[dateMatch[2].toLowerCase().slice(0,3)];
-        if(m !== undefined){
-          day = parseInt(dateMatch[1]);
-          month = m;
-          year = dateMatch[3] ? parseInt(dateMatch[3]) : new Date().getFullYear();
-        }
-      } else {
-        day = parseInt(dateMatch[1]);
-        month = parseInt(dateMatch[2]) - 1;
-        year = parseInt(dateMatch[3]);
-        if(year < 100) year += 2000;
-      }
-      if(day && month >= 0 && month <= 11){
-        currentDate = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      }
-    }
-
-    const amountMatch = line.match(/[-\u2212]?\s*(R\$\s*|US?\$\s*|\$\s*|USD\s*)?([\d]+[.,]\d{2})/);
-    if(amountMatch && currentDate){
-      let rawAmount = amountMatch[2].replace('.','').replace(',','.');
-      const amount = parseFloat(rawAmount);
-      if(amount <= 0) continue;
-
-      let currency = 'BRL';
-      const hint = amountMatch[1] || '';
-      if(/US|USD/i.test(hint)) currency = 'USD';
-      else if(hint === '$ ') currency = 'ARS';
+    const amountResult = tryParseAmount(line);
+    if(amountResult){
+      let amount = amountResult.amount;
+      let currency = amountResult.currency || lastCurrency || 'BRL';
+      if(amountResult.currency) lastCurrency = amountResult.currency;
 
       let desc = '';
-      for(let j = Math.max(0, i-2); j < i; j++){
+      for(let j = Math.max(0, i-3); j < i; j++){
         const prev = lines[j].trim();
-        if(prev && !prev.match(/^\d{1,2}[\/\-]/) && !prev.match(/R\$|US\$|\$/) && prev !== line){
-          desc = prev;
-          break;
-        }
+        if(!prev) continue;
+        if(prev.match(/^\d{1,2}[\/\-.]/)) continue;
+        if(prev.match(/R\$|US\$|USD|EUR|\$/i) && prev.match(/[\d.,]+/)) continue;
+        if(prev.length < 2) continue;
+        desc = prev;
+        break;
       }
       if(!desc){
-        const cleaned = line.replace(/[-\u2212]?\s*(R\$\s*|US?\$\s*|\$\s*|USD\s*)?[\d.,]+/,'').trim();
-        if(cleaned) desc = cleaned;
+        const cleaned = line.replace(/[-\u2212]?\s*(?:R\$\s*|US?\$\s*|\$\s*|USD\s*|EUR\s*)?[\d.,]+/,'').trim();
+        if(cleaned && cleaned.length > 1) desc = cleaned;
       }
 
       results.push({
         date: currentDate,
-        amount: Math.abs(amount),
+        amount,
         currency,
         description: desc || 'Movimiento detectado',
         category: guessCategory(desc),
-        selected: true
+        selected: true,
+        splitCount: 1
       });
     }
   }
 
   const seen = new Set();
   return results.filter(r => {
-    const key = r.date + r.amount + r.currency;
+    const key = r.date + r.amount.toFixed(2) + r.currency;
     if(seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -1451,7 +1512,7 @@ async function processOCRImage(file){
     }
 
     ocrDetected = detected;
-    showOCRReview();
+    showOCRReview(text);
     progress.classList.remove('active');
   } catch(e){
     console.error('OCR error:', e);
@@ -1460,11 +1521,15 @@ async function processOCRImage(file){
   }
 }
 
-function showOCRReview(){
+function showOCRReview(rawText){
   const tr = t(); if(!tr) return;
   const mc = tr.primaryCurrency;
   const list = document.getElementById('ocrReviewList');
-  list.innerHTML = ocrDetected.map((r, i) => `
+  let debugHtml = '';
+  if(rawText){
+    debugHtml = `<details style="margin-bottom:14px;"><summary style="font-size:12px; color:var(--ink-soft); cursor:pointer; font-family:'IBM Plex Mono',monospace;">Ver texto OCR extraido</summary><pre style="font-size:11px; background:#f5f5f5; padding:10px; border-radius:8px; max-height:200px; overflow:auto; white-space:pre-wrap; margin-top:8px; font-family:'IBM Plex Mono',monospace;">${rawText.replace(/</g,'&lt;')}</pre></details>`;
+  }
+  list.innerHTML = debugHtml + ocrDetected.map((r, i) => `
     <div class="ocr-review-item">
       <input type="checkbox" class="ocr-review-check" data-ocr-idx="${i}" ${r.selected?'checked':''} />
       <div class="ocr-review-details">
@@ -1476,6 +1541,13 @@ function showOCRReview(){
             ${tr.categories.map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
+        <div class="ocr-review-split">
+          <label style="font-size:11px; color:var(--ink-soft); margin-top:6px; display:flex; align-items:center; gap:6px;">
+            Dividir entre:
+            <input type="number" class="ocr-split-input" data-ocr-split="${i}" min="1" max="20" value="${r.splitCount||1}" style="width:50px; padding:4px 6px; border:1px solid var(--line-strong); border-radius:6px; font-size:12px; text-align:center;" />
+            <span class="ocr-split-result mono" data-ocr-split-result="${i}" style="font-size:12px; color:var(--coral); font-weight:600;">= ${fmtCur(r.amount, r.currency, tr)}</span>
+          </label>
+        </div>
       </div>
     </div>
   `).join('');
@@ -1484,6 +1556,7 @@ function showOCRReview(){
 
 function importOCRSelected(){
   const tr = t(); if(!tr) return;
+  const mc = tr.primaryCurrency;
   const checks = document.querySelectorAll('.ocr-review-check');
   let imported = 0;
   checks.forEach(ch => {
@@ -1492,15 +1565,24 @@ function importOCRSelected(){
     const r = ocrDetected[idx];
     if(!r) return;
     const catSel = document.querySelector(`[data-ocr-cat="${idx}"]`);
+    const splitInput = document.querySelector(`[data-ocr-split="${idx}"]`);
+    const splitCount = Math.max(1, parseInt(splitInput?.value) || 1);
+    const finalAmount = r.amount / splitCount;
+    let note = r.description;
+    if(splitCount > 1){
+      note = (note ? note + ' | ' : '') + 'Original: ' + fmtCur(r.amount, r.currency, tr) + ' / ' + splitCount + ' = ' + fmtCur(finalAmount, r.currency, tr);
+    }
     tr.expenses.push({
       id: 'exp-' + Date.now() + '-' + idx,
       date: r.date,
       placeId: 'general',
       category: catSel ? catSel.value : r.category,
-      amount: r.amount,
+      amount: finalAmount,
       currency: r.currency,
-      note: r.description,
-      source: 'ocr'
+      note,
+      source: 'ocr',
+      splitOriginal: splitCount > 1 ? r.amount : null,
+      splitCount: splitCount > 1 ? splitCount : null
     });
     imported++;
   });
@@ -1766,6 +1848,18 @@ document.getElementById('ocrReviewCancel').addEventListener('click', () => {
   ocrDetected = [];
 });
 document.getElementById('ocrReviewConfirm').addEventListener('click', importOCRSelected);
+
+document.getElementById('ocrReviewList').addEventListener('input', e => {
+  if(e.target.classList.contains('ocr-split-input')){
+    const idx = parseInt(e.target.dataset.ocrSplit);
+    const split = Math.max(1, parseInt(e.target.value) || 1);
+    ocrDetected[idx].splitCount = split;
+    const r = ocrDetected[idx];
+    const perPerson = r.amount / split;
+    const resultEl = document.querySelector(`[data-ocr-split-result="${idx}"]`);
+    if(resultEl) resultEl.textContent = '= ' + fmtCur(perPerson, r.currency, t());
+  }
+});
 
 // Settings events
 document.getElementById('setName').addEventListener('change', e => {
