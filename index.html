@@ -1324,7 +1324,14 @@ function parseOCRText(text){
     january:0,february:1,march:2,april:3,may:4,june:5,july:6,august:7,september:8,october:9,november:10,december:11
   };
 
-  const monthNames = Object.keys(monthMap);
+  function shouldSkipLine(line){
+    if(/usdc/i.test(line)) return true;
+    if(/ars\s*>\s*usdc|usdc\s*>\s*ars|brl\s*>\s*usdc|usdc\s*>\s*brl/i.test(line)) return true;
+    if(/^\s*(de|da)\s+/i.test(line) && /\+/.test(line)) return true;
+    if(/^\s*(=|==|===|mm)\b/.test(line)) return true;
+    if(/transacciones|esta semana|este mes|ayer|hoy/i.test(line) && !/\d{2}/.test(line)) return true;
+    return false;
+  }
 
   function tryParseDate(line){
     let m;
@@ -1371,88 +1378,94 @@ function parseOCRText(text){
     return null;
   }
 
-  function tryParseAmount(line){
+  function tryParseBRLAmount(line){
     let m;
 
-    m = line.match(/[-\u2212]?\s*(R\$\s*|US?\$\s*|\$\s*|USD\s*|EUR\s*)\s*([\d.,]+)/i);
-    if(m){
-      let raw = m[2].replace(/\./g,'').replace(',','.');
-      const val = parseFloat(raw);
-      if(!isNaN(val) && val > 0){
-        let cur = 'BRL';
-        if(/usd|us\$/i.test(m[1])) cur='USD';
-        else if(/eur/i.test(m[1])) cur='EUR';
-        else if(/^\$\s*$/.test(m[1]) || m[1]==='$ ') cur='ARS';
-        return {amount:Math.abs(val), currency:cur};
-      }
-    }
-
-    m = line.match(/[-\u2212]?\s*([\d]{1,6}[.,]\d{1,2})\s*(USD|BRL|EUR|ARS|US\$|R\$|\$)?/i);
+    m = line.match(/[-\u2212]?\s*R\$\s*([\d]+[.,]\d{2})/i);
     if(m){
       let raw = m[1].replace(/\./g,'').replace(',','.');
       const val = parseFloat(raw);
-      if(!isNaN(val) && val > 0){
-        let cur = 'BRL';
-        if(m[2]){
-          if(/usd|us\$/i.test(m[2])) cur='USD';
-          else if(/eur/i.test(m[2])) cur='EUR';
-          else if(/\$/.test(m[2]) && !/r\$/.test(m[2])) cur='ARS';
-        }
-        return {amount:Math.abs(val), currency:cur};
-      }
+      if(!isNaN(val) && val > 0) return {amount:Math.abs(val), currency:'BRL'};
     }
 
-    m = line.match(/[-\u2212]?\s*([\d]{1,6}[.,]\d{1,2})\b/);
+    m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\s*BRL/i);
     if(m){
       let raw = m[1].replace(/\./g,'').replace(',','.');
       const val = parseFloat(raw);
-      if(!isNaN(val) && val > 0) return {amount:Math.abs(val), currency:null};
+      if(!isNaN(val) && val > 0) return {amount:Math.abs(val), currency:'BRL'};
+    }
+
+    m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\s*(?:USDc|USD|ARS|EUR|\$)/i);
+    if(m) return null;
+
+    m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\b/);
+    if(m){
+      let raw = m[1].replace(/\./g,'').replace(',','.');
+      const val = parseFloat(raw);
+      if(!isNaN(val) && val > 0) return {amount:Math.abs(val), currency:'BRL'};
     }
 
     return null;
   }
 
+  function extractMerchant(line){
+    let m = line.match(/(?:A|Ana?|O)\s+([A-Z\u00C0-\u024F][\w\u00C0-\u024F\s.'-]{2,})/);
+    if(m){
+      let name = m[1].replace(/[-\u2212]\s*[\d.,]+.*$/,'').replace(/USDc|BRL|ARS|EUR|\$/gi,'').trim();
+      if(name.length > 2) return name;
+    }
+    m = line.match(/\w+\s+\w+\s+(?:LTDA|ME|EPP|SA)\b/i);
+    if(m) return m[0].trim();
+    return null;
+  }
+
   let currentDate = todayStr();
-  let lastCurrency = null;
+  let pendingMerchant = null;
 
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
+
+    if(shouldSkipLine(line)){
+      pendingMerchant = null;
+      continue;
+    }
 
     const dateResult = tryParseDate(line);
     if(dateResult){
       currentDate = dateResult;
     }
 
-    const amountResult = tryParseAmount(line);
-    if(amountResult){
-      let amount = amountResult.amount;
-      let currency = amountResult.currency || lastCurrency || 'BRL';
-      if(amountResult.currency) lastCurrency = amountResult.currency;
+    const merchant = extractMerchant(line);
+    if(merchant){
+      pendingMerchant = merchant;
+    }
 
-      let desc = '';
-      for(let j = Math.max(0, i-3); j < i; j++){
-        const prev = lines[j].trim();
-        if(!prev) continue;
-        if(prev.match(/^\d{1,2}[\/\-.]/)) continue;
-        if(prev.match(/R\$|US\$|USD|EUR|\$/i) && prev.match(/[\d.,]+/)) continue;
-        if(prev.length < 2) continue;
-        desc = prev;
-        break;
-      }
+    const amountResult = tryParseBRLAmount(line);
+    if(amountResult){
+      let desc = pendingMerchant || '';
       if(!desc){
-        const cleaned = line.replace(/[-\u2212]?\s*(?:R\$\s*|US?\$\s*|\$\s*|USD\s*|EUR\s*)?[\d.,]+/,'').trim();
-        if(cleaned && cleaned.length > 1) desc = cleaned;
+        for(let j = Math.max(0, i-3); j < i; j++){
+          const prev = lines[j].trim();
+          if(!prev || shouldSkipLine(prev)) continue;
+          const m2 = extractMerchant(prev);
+          if(m2){ desc = m2; break; }
+          if(prev.length > 2 && !prev.match(/[\d.,]+/) ){
+            desc = prev;
+            break;
+          }
+        }
       }
 
       results.push({
         date: currentDate,
-        amount,
-        currency,
+        amount: amountResult.amount,
+        currency: 'BRL',
         description: desc || 'Movimiento detectado',
         category: guessCategory(desc),
         selected: true,
         splitCount: 1
       });
+      pendingMerchant = null;
     }
   }
 
