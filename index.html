@@ -1313,10 +1313,11 @@ function loadTesseract(){
   });
 }
 
-function parseOCRText(text){
+function parseOCRText(text, tracker){
   const results = [];
   const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
   console.log('OCR lines:', lines.length, lines);
+  const usdBrl = (tracker && tracker.rates && tracker.rates.usdBrl) || 5.3;
 
   const monthMap = {
     ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,set:8,oct:9,nov:10,dic:11,
@@ -1326,10 +1327,8 @@ function parseOCRText(text){
   };
 
   function shouldSkipLine(line){
-    if(/ars\s*>\s*usdc|usdc\s*>\s*ars|brl\s*>\s*usdc|usdc\s*>\s*brl/i.test(line)) return true;
-    if(/^\s*(de|da)\s+/i.test(line) && /\+/.test(line)) return true;
     if(/^\s*(=|==|===|mm)\b/.test(line)) return true;
-    if(/transacciones|esta semana|este mes|ayer|hoy/i.test(line) && !/\d{2}/.test(line)) return true;
+    if(/transacciones|esta semana|este mes|ayer|hoy|no hay/i.test(line) && !/\d+[.,]\d{2}/.test(line)) return true;
     return false;
   }
 
@@ -1354,117 +1353,83 @@ function parseOCRText(text){
       }
     }
 
-    m = line.match(/(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|january|february|march|april|may|june|july|august|september|october|november|december)\w*\s*(?:de\s+)?(\d{1,2})(?:\s*,?\s*(\d{2,4}))?/i);
-    if(m){
-      const key = m[1].toLowerCase().slice(0,3);
-      const month = monthMap[key] ?? monthMap[m[1].toLowerCase()];
-      if(month !== undefined){
-        let day=parseInt(m[2]), year=m[3]?parseInt(m[3]):new Date().getFullYear();
-        if(year<100) year+=2000;
-        if(day>=1&&day<=31) return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      }
-    }
-
-    m = line.match(/(\d{1,2})\s*(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|january|february|march|april|may|june|july|august|september|october|november|december)\w*/i);
-    if(m){
-      const key = m[2].toLowerCase().slice(0,3);
-      const month = monthMap[key] ?? monthMap[m[2].toLowerCase()];
-      if(month !== undefined){
-        let day=parseInt(m[1]), year=new Date().getFullYear();
-        if(day>=1&&day<=31) return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      }
-    }
-
     return null;
   }
 
-  function tryParseBRLAmount(line){
+  function extractAmountAndMerchant(line){
     let m;
+
+    m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\s*USDc/i);
+    if(m){
+      let raw = m[1].replace(/\./g,'').replace(',','.');
+      const val = parseFloat(raw);
+      if(!isNaN(val) && val > 0){
+        let merchant = '';
+        const before = line.replace(/[-\u2212]?\s*[\d]+[.,]\d{2}\s*USDc.*$/i,'').trim();
+        merchant = before.replace(/^[\s&*#@A-Za-z]?\s*/,'').trim();
+        if(merchant.length < 3) merchant = before.replace(/^[^A-Za-z\u00C0-\u024F]*/,'').trim();
+        if(merchant.length < 3) merchant = before;
+        return {amount: val, currency: 'USDc', merchant: merchant.replace(/[-\u2212]\s*$/,'').trim()};
+      }
+    }
 
     m = line.match(/[-\u2212]?\s*R\$\s*([\d]+[.,]\d{2})/i);
     if(m){
       let raw = m[1].replace(/\./g,'').replace(',','.');
       const val = parseFloat(raw);
-      if(!isNaN(val) && val > 0) return {amount:Math.abs(val), currency:'BRL'};
+      if(!isNaN(val) && val > 0) return {amount: Math.abs(val), currency: 'BRL', merchant: ''};
     }
 
     m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\s*BRL/i);
     if(m){
       let raw = m[1].replace(/\./g,'').replace(',','.');
       const val = parseFloat(raw);
-      if(!isNaN(val) && val > 0) return {amount:Math.abs(val), currency:'BRL'};
+      if(!isNaN(val) && val > 0) return {amount: Math.abs(val), currency: 'BRL', merchant: ''};
     }
 
-    if(/usdc|USD|ARS|EUR|\$/i.test(line)) return null;
-
-    m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\b/);
-    if(m){
-      let raw = m[1].replace(/\./g,'').replace(',','.');
-      const val = parseFloat(raw);
-      if(!isNaN(val) && val > 0) return {amount:Math.abs(val), currency:'BRL'};
-    }
-
-    return null;
-  }
-
-  function extractMerchant(line){
-    let m = line.match(/(?:A|Ana?|O)\s+([A-Z\u00C0-\u024F][\w\u00C0-\u024F\s.'-]{2,})/);
-    if(m){
-      let name = m[1].replace(/[-\u2212]\s*[\d.,]+.*$/,'').replace(/USDc|BRL|ARS|EUR|\$/gi,'').trim();
-      if(name.length > 2) return name;
-    }
-    m = line.match(/\w+\s+\w+\s+(?:LTDA|ME|EPP|SA)\b/i);
-    if(m) return m[0].trim();
     return null;
   }
 
   let currentDate = todayStr();
-  let pendingMerchant = null;
 
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
 
-    if(shouldSkipLine(line)){
-      pendingMerchant = null;
-      continue;
-    }
+    if(shouldSkipLine(line)) continue;
 
     const dateResult = tryParseDate(line);
-    if(dateResult){
-      currentDate = dateResult;
-    }
+    if(dateResult) currentDate = dateResult;
 
-    const merchant = extractMerchant(line);
-    if(merchant){
-      pendingMerchant = merchant;
-    }
-
-    const amountResult = tryParseBRLAmount(line);
-    if(amountResult){
-      let desc = pendingMerchant || '';
+    const parsed = extractAmountAndMerchant(line);
+    if(parsed){
+      let desc = parsed.merchant || '';
       if(!desc){
         for(let j = Math.max(0, i-3); j < i; j++){
           const prev = lines[j].trim();
           if(!prev || shouldSkipLine(prev)) continue;
-          const m2 = extractMerchant(prev);
-          if(m2){ desc = m2; break; }
-          if(prev.length > 2 && !prev.match(/[\d.,]+/) ){
-            desc = prev;
+          if(prev.length > 3 && !/\d+[.,]\d{2}/.test(prev)){
+            desc = prev.replace(/^[^A-Za-z\u00C0-\u024F]*/,'').trim();
             break;
           }
         }
       }
 
+      let amount = parsed.amount;
+      let currency = parsed.currency;
+      if(currency === 'USDc'){
+        amount = Math.round(parsed.amount * usdBrl * 100) / 100;
+        currency = 'BRL';
+      }
+
       results.push({
         date: currentDate,
-        amount: amountResult.amount,
-        currency: 'BRL',
-        description: desc || 'Movimiento detectado',
+        amount: amount,
+        currency: currency,
+        description: desc || 'Gasto detectado',
         category: guessCategory(desc),
         selected: true,
         splitCount: 1
       });
-      pendingMerchant = null;
     }
   }
 
@@ -1514,7 +1479,7 @@ async function processOCRImage(file){
     const text = result.data.text;
     console.log('OCR text:', text);
 
-    const detected = parseOCRText(text);
+    const detected = parseOCRText(text, t());
     barFill.style.width = '100%';
 
     if(detected.length === 0){
