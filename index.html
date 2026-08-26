@@ -190,6 +190,9 @@ section[hidden]{display:none;}
 .currency-tag{ font-size:10.5px; color:var(--ink-soft); }
 .del-btn{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:15px; line-height:1; }
 .del-btn:hover{color:var(--coral);}
+.edit-btn{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:14px; line-height:1; margin-right:6px; }
+.edit-btn:hover{color:var(--ocean);}
+.actions-cell{ white-space:nowrap; }
 .empty-state{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px; }
 
 /* ---------- OCR SECTION ---------- */
@@ -671,6 +674,43 @@ section[hidden]{display:none;}
   </div>
 </div>
 
+<!-- Edit expense modal -->
+<div class="overlay" id="editExpenseOverlay" hidden>
+  <div class="modal">
+    <h3>Editar gasto</h3>
+    <form id="editExpenseForm">
+      <input type="hidden" id="editExpId" />
+      <div class="field" style="margin-bottom:12px;">
+        <label for="editExpDate">Fecha</label>
+        <input type="date" id="editExpDate" required />
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label for="editExpPlace">Lugar</label>
+        <select id="editExpPlace"></select>
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label for="editExpCategory">Categoria</label>
+        <select id="editExpCategory"></select>
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label for="editExpAmount">Monto</label>
+        <div class="amount-row">
+          <input type="number" id="editExpAmount" min="0" step="0.01" required />
+          <select id="editExpCurrency"></select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:12px;">
+        <label for="editExpNote">Nota</label>
+        <input type="text" id="editExpNote" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" id="editExpCancel">Cancelar</button>
+        <button type="submit" class="btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1116,7 +1156,7 @@ function renderExpenseTable(){
             <td>${e.category}</td>
             <td>${e.note || '\u2014'}</td>
             <td class="amt">${fmtCur(Number(e.amount), cur, tr)}${cur!==mc ? `<div class="currency-tag">\u2248 ${fmtCur(toMain(e.amount,cur,tr),mc,tr)}</div>` : ''}</td>
-            <td><button class="del-btn" data-del="${e.id}" title="Eliminar">\u2715</button></td>
+            <td class="actions-cell"><button class="edit-btn" data-edit="${e.id}" title="Editar">\u270e</button><button class="del-btn" data-del="${e.id}" title="Eliminar">\u2715</button></td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -1625,12 +1665,75 @@ document.getElementById('expenseForm').addEventListener('submit', e => {
 });
 
 document.getElementById('expenseTableWrap').addEventListener('click', e => {
-  const id = e.target.dataset.del;
-  if(!id) return;
+  const delId = e.target.dataset.del;
+  const editId = e.target.dataset.edit;
+  if(delId){
+    const tr = t(); if(!tr) return;
+    tr.expenses = tr.expenses.filter(ex => ex.id !== delId);
+    renderAll();
+    saveAll();
+    return;
+  }
+  if(editId){
+    openEditExpense(editId);
+  }
+});
+
+function openEditExpense(expId){
   const tr = t(); if(!tr) return;
-  tr.expenses = tr.expenses.filter(ex => ex.id !== id);
+  const exp = tr.expenses.find(e=>e.id===expId);
+  if(!exp) return;
+  document.getElementById('editExpId').value = exp.id;
+  document.getElementById('editExpDate').value = exp.date;
+  document.getElementById('editExpAmount').value = exp.amount;
+  document.getElementById('editExpNote').value = exp.note || '';
+
+  const placeSel = document.getElementById('editExpPlace');
+  const itinerary = tr.places.filter(p=>p.inItinerary && p.id!=='general').sort((a,b)=>(a.order||0)-(b.order||0));
+  const general = tr.places.find(p=>p.id==='general');
+  const others = tr.places.filter(p=>!p.inItinerary && p.id!=='general');
+  placeSel.innerHTML = `
+    ${general ? `<optgroup label="General"><option value="${general.id}">${general.name}</option></optgroup>` : ''}
+    ${itinerary.length ? `<optgroup label="En el itinerario">
+      ${itinerary.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+    </optgroup>` : ''}
+    <optgroup label="Otros lugares">
+      ${others.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+    </optgroup>
+  `;
+  placeSel.value = exp.placeId;
+
+  const catSel = document.getElementById('editExpCategory');
+  catSel.innerHTML = tr.categories.map(c=>`<option ${c===exp.category?'selected':''}>${c}</option>`).join('');
+
+  const curSel = document.getElementById('editExpCurrency');
+  curSel.innerHTML = tr.currencies.map(c=>`<option value="${c.code}" ${c.code===(exp.currency||tr.primaryCurrency)?'selected':''}>${c.symbol}</option>`).join('');
+
+  document.getElementById('editExpenseOverlay').hidden = false;
+}
+
+document.getElementById('editExpCancel').addEventListener('click', () => {
+  document.getElementById('editExpenseOverlay').hidden = true;
+});
+document.getElementById('editExpenseOverlay').addEventListener('click', e => {
+  if(e.target.id === 'editExpenseOverlay') document.getElementById('editExpenseOverlay').hidden = true;
+});
+document.getElementById('editExpenseForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const tr = t(); if(!tr) return;
+  const id = document.getElementById('editExpId').value;
+  const exp = tr.expenses.find(ex=>ex.id===id);
+  if(!exp) return;
+  exp.date = document.getElementById('editExpDate').value;
+  exp.placeId = document.getElementById('editExpPlace').value;
+  exp.category = document.getElementById('editExpCategory').value;
+  exp.amount = Number(document.getElementById('editExpAmount').value);
+  exp.currency = document.getElementById('editExpCurrency').value;
+  exp.note = document.getElementById('editExpNote').value.trim();
+  document.getElementById('editExpenseOverlay').hidden = true;
   renderAll();
   saveAll();
+  showToast('Gasto actualizado');
 });
 
 document.getElementById('ocrSection').addEventListener('click', () => {
@@ -1845,7 +1948,7 @@ document.getElementById('panelAddItinerary').addEventListener('click', () => {
 
 document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
-  ['modalOverlay','pinModalOverlay','placePanelOverlay','ocrReviewOverlay','newTrackerOverlay'].forEach(id => {
+  ['modalOverlay','pinModalOverlay','placePanelOverlay','ocrReviewOverlay','newTrackerOverlay','editExpenseOverlay'].forEach(id => {
     if(!document.getElementById(id).hidden) document.getElementById(id).hidden = true;
   });
   pendingCandidateId = null;
