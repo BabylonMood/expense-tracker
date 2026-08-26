@@ -1316,6 +1316,7 @@ function loadTesseract(){
 function parseOCRText(text){
   const results = [];
   const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  console.log('OCR lines:', lines.length, lines);
 
   const monthMap = {
     ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,set:8,oct:9,nov:10,dic:11,
@@ -1325,7 +1326,6 @@ function parseOCRText(text){
   };
 
   function shouldSkipLine(line){
-    if(/usdc/i.test(line)) return true;
     if(/ars\s*>\s*usdc|usdc\s*>\s*ars|brl\s*>\s*usdc|usdc\s*>\s*brl/i.test(line)) return true;
     if(/^\s*(de|da)\s+/i.test(line) && /\+/.test(line)) return true;
     if(/^\s*(=|==|===|mm)\b/.test(line)) return true;
@@ -1395,8 +1395,7 @@ function parseOCRText(text){
       if(!isNaN(val) && val > 0) return {amount:Math.abs(val), currency:'BRL'};
     }
 
-    m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\s*(?:USDc|USD|ARS|EUR|\$)/i);
-    if(m) return null;
+    if(/usdc|USD|ARS|EUR|\$/i.test(line)) return null;
 
     m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\b/);
     if(m){
@@ -1519,8 +1518,14 @@ async function processOCRImage(file){
     barFill.style.width = '100%';
 
     if(detected.length === 0){
-      status.textContent = 'No se detectaron gastos. Intenta con otra imagen.';
-      setTimeout(()=> progress.classList.remove('active'), 3000);
+      ocrDetected = [];
+      showOCRReview(text);
+      const reviewList = document.getElementById('ocrReviewList');
+      const notice = document.createElement('div');
+      notice.style.cssText = 'padding:14px; color:#b45309; font-size:13px; text-align:center;';
+      notice.textContent = 'No se detectaron gastos. Revisa el texto OCR abajo y ajusta si es necesario.';
+      reviewList.prepend(notice);
+      progress.classList.remove('active');
       return;
     }
 
