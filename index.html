@@ -882,7 +882,7 @@ function defaultTracker(name, primaryCurrency, startDate){
     categories: [...DEFAULT_CATEGORIES],
     currencies: [...DEFAULT_CURRENCIES],
     avgExcluded: [...DEFAULT_AVG_EXCLUDED],
-    rates: { brlArs: 320, usdBrl: 5.3 },
+    rates: { brlArs: 320, usdBrl: 5.14 },
     places: [],
     expenses: []
   };
@@ -1428,7 +1428,9 @@ function parseOCRText(text, tracker){
         description: desc || 'Gasto detectado',
         category: guessCategory(desc),
         selected: true,
-        splitCount: 1
+        splitCount: 1,
+        originalAmount: parsed.currency === 'USDc' ? parsed.amount : null,
+        originalCurrency: parsed.currency === 'USDc' ? 'USDc' : null
       });
     }
   }
@@ -1512,14 +1514,16 @@ function showOCRReview(rawText){
   if(rawText){
     debugHtml = `<details style="margin-bottom:14px;"><summary style="font-size:12px; color:var(--ink-soft); cursor:pointer; font-family:'IBM Plex Mono',monospace;">Ver texto OCR extraido</summary><pre style="font-size:11px; background:#f5f5f5; padding:10px; border-radius:8px; max-height:200px; overflow:auto; white-space:pre-wrap; margin-top:8px; font-family:'IBM Plex Mono',monospace;">${rawText.replace(/</g,'&lt;')}</pre></details>`;
   }
-  list.innerHTML = debugHtml + ocrDetected.map((r, i) => `
+  list.innerHTML = debugHtml + ocrDetected.map((r, i) => {
+    const srcLabel = r.originalAmount ? `<span style="font-size:11px;color:var(--ink-soft);">(${r.originalAmount.toFixed(2)} USDc)</span>` : '';
+    return `
     <div class="ocr-review-item">
       <input type="checkbox" class="ocr-review-check" data-ocr-idx="${i}" ${r.selected?'checked':''} />
       <div class="ocr-review-details">
         <div class="ocr-review-desc">${r.description}</div>
         <div class="ocr-review-meta">
           <span>${fmtDate(r.date)}</span>
-          <span class="ocr-review-amount">${fmtCur(r.amount, r.currency, tr)}</span>
+          <span class="ocr-review-amount">${fmtCur(r.amount, r.currency, tr)} ${srcLabel}</span>
           <select class="ocr-review-cat" data-ocr-cat="${i}">
             ${tr.categories.map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}
           </select>
@@ -1533,7 +1537,7 @@ function showOCRReview(rawText){
         </div>
       </div>
     </div>
-  `).join('');
+  `}).join('');
   document.getElementById('ocrReviewOverlay').hidden = false;
 }
 
