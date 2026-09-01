@@ -301,6 +301,8 @@ section[hidden]{display:none;}
 .ocr-review-note-wrap{ margin-top:8px; display:flex; align-items:center; gap:6px; }
 .ocr-review-note-label{ font-size:11px; color:var(--ink-soft); font-weight:600; white-space:nowrap; }
 .ocr-review-note{ flex:1; min-width:0; padding:6px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px; background:#fff; }
+.ocr-review-place-wrap{ margin-top:6px; display:flex; align-items:center; gap:6px; }
+.ocr-review-place-label{ font-size:11px; color:var(--ink-soft); font-weight:600; white-space:nowrap; }
 
 /* ---------- TOAST ---------- */
 .toast{
@@ -1526,14 +1528,28 @@ function showOCRReview(rawText){
     debugHtml = `<details style="margin-bottom:14px;"><summary style="font-size:12px; color:var(--ink-soft); cursor:pointer; font-family:'IBM Plex Mono',monospace;">Ver texto OCR extraido</summary><pre style="font-size:11px; background:#f5f5f5; padding:10px; border-radius:8px; max-height:200px; overflow:auto; white-space:pre-wrap; margin-top:8px; font-family:'IBM Plex Mono',monospace;">${rawText.replace(/</g,'&lt;')}</pre></details>`;
   }
   const commonDate = ocrDetected.length ? ocrDetected[0].date : todayStr();
+  const placeOpts = (() => {
+    const plans = tr.places.filter(p=>p.inItinerary && p.id!=='general').sort((a,b)=>(a.order||0)-(b.order||0));
+    const general = tr.places.find(p=>p.id==='general');
+    const others = tr.places.filter(p=>!p.inItinerary && p.id!=='general');
+    let h = '';
+    if(general) h += `<optgroup label="General"><option value="${general.id}">${general.name}</option></optgroup>`;
+    if(plans.length) h += `<optgroup label="En el itinerario">${plans.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</optgroup>`;
+    if(others.length) h += `<optgroup label="Otros lugares">${others.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</optgroup>`;
+    return h;
+  })();
+  const firstPlace = tr.places.find(p=>p.id!=='general' && p.inItinerary) ? tr.places.find(p=>p.id!=='general' && p.inItinerary).id : (tr.places.find(p=>p.id==='general') ? 'general' : 'general');
   list.innerHTML = debugHtml + `
     <div style="margin-bottom:12px; padding:12px; background:var(--bg-soft,#f5f7f7); border-radius:10px; border:1px solid var(--line-soft,#e3e7e7);">
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
         <label style="font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:6px; flex:1; min-width:180px;">Fecha de estos gastos (aplica a todos):
           <input type="date" id="ocrCommonDate" value="${commonDate}" style="flex:1; min-width:140px; padding:6px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px;" />
         </label>
+        <label style="font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:6px; flex:1; min-width:180px;">Lugar (aplica a todos):
+          <select id="ocrCommonPlace" class="ocr-review-cat" style="flex:1; min-width:140px; padding:6px 8px; font-size:13px;">${placeOpts}</select>
+        </label>
       </div>
-      <div style="font-size:11px; color:var(--ink-soft); margin-top:6px;">Usá esto si el OCR no detectó la fecha. Después podés ajustar cada uno por separado.</div>
+      <div style="font-size:11px; color:var(--ink-soft); margin-top:6px;">Asigná la fecha y el lugar para que estos gastos cuenten en el promedio diario. Después podés ajustar cada uno por separado.</div>
     </div>
     ` + ocrDetected.map((r, i) => {
     const srcLabel = r.originalAmount ? `<span style="font-size:11px;color:var(--ink-soft);">(${r.originalAmount.toFixed(2)} USDc)</span>` : '';
@@ -1555,6 +1571,10 @@ function showOCRReview(rawText){
           <label class="ocr-review-note-label" for="ocrNote${i}">Nota</label>
           <input type="text" id="ocrNote${i}" class="ocr-review-note" data-ocr-note="${i}" placeholder="Ej: cena, super, uber, entrada..." value="" />
         </div>
+        <div class="ocr-review-place-wrap">
+          <label class="ocr-review-place-label">Lugar</label>
+          <select class="ocr-review-place" data-ocr-place="${i}" style="flex:1; min-width:0; padding:5px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:12px; background:#fff;">${placeOpts}</select>
+        </div>
         <div class="ocr-review-split">
           <label style="font-size:11px; color:var(--ink-soft); margin-top:6px; display:flex; align-items:center; gap:6px;">
             Dividir entre:
@@ -1574,6 +1594,14 @@ function showOCRReview(rawText){
       document.querySelectorAll('.ocr-review-date').forEach(d => d.value = v);
     });
   }
+  const commonPlaceEl = document.getElementById('ocrCommonPlace');
+  if(commonPlaceEl){
+    commonPlaceEl.addEventListener('change', e => {
+      const v = e.target.value;
+      if(!v) return;
+      document.querySelectorAll('.ocr-review-place').forEach(p => p.value = v);
+    });
+  }
 }
 
 function importOCRSelected(){
@@ -1590,6 +1618,7 @@ function importOCRSelected(){
     const splitInput = document.querySelector(`[data-ocr-split="${idx}"]`);
     const dateInput = document.querySelector(`[data-ocr-date="${idx}"]`);
     const noteInput = document.querySelector(`[data-ocr-note="${idx}"]`);
+    const placeInput = document.querySelector(`[data-ocr-place="${idx}"]`);
     const splitCount = Math.max(1, parseInt(splitInput?.value) || 1);
     const finalAmount = r.amount / splitCount;
     const extraNote = noteInput ? noteInput.value.trim() : '';
@@ -1603,7 +1632,7 @@ function importOCRSelected(){
     tr.expenses.push({
       id: 'exp-' + Date.now() + '-' + idx,
       date: dateInput && dateInput.value ? dateInput.value : r.date,
-      placeId: 'general',
+      placeId: placeInput && placeInput.value ? placeInput.value : 'general',
       category: catSel ? catSel.value : r.category,
       amount: finalAmount,
       currency: r.currency,
