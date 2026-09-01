@@ -1342,14 +1342,14 @@ function parseOCRText(text, tracker){
       if(day>=1&&day<=31&&month>=0&&month<=11) return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
     }
 
-    m = line.match(/(\d{1,2})\s*(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|january|february|march|april|may|june|july|august|september|october|november|december)\w*(?:\s*(?:de\s+)?(\d{2,4}))?/i);
+    m = line.match(/(\d{1,2})\s*(?:de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez|january|february|march|april|may|june|july|august|september|october|november|december)\.?\w*(?:\s*(?:de\s+)?(\d{2,4}))?/i);
     if(m){
       const key = m[2].toLowerCase().slice(0,3);
       const month = monthMap[key] ?? monthMap[m[2].toLowerCase()];
       if(month !== undefined){
-        let day=parseInt(m[1]), year=m[3]?parseInt(m[3]):new Date().getFullYear();
+        const day=parseInt(m[1]), year=m[3]?parseInt(m[3]):new Date().getFullYear();
         if(year<100) year+=2000;
-        if(day>=1&&day<=31) return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        if(day>=1&&day<=31 && year>2000) return `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
       }
     }
 
@@ -1530,7 +1530,9 @@ function showOCRReview(rawText){
       <div class="ocr-review-details">
         <div class="ocr-review-desc">${r.description}</div>
         <div class="ocr-review-meta">
-          <span>${fmtDate(r.date)}</span>
+          <label style="font-size:11px; color:var(--ink-soft); display:flex; align-items:center; gap:6px;">Fecha:
+            <input type="date" class="ocr-review-date" data-ocr-date="${i}" value="${r.date}" style="flex:1; padding:4px 6px; border:1px solid var(--line-strong); border-radius:6px; font-size:12px;" />
+          </label>
           <span class="ocr-review-amount">${fmtCur(r.amount, r.currency, tr)} ${srcLabel}</span>
           <select class="ocr-review-cat" data-ocr-cat="${i}">
             ${tr.categories.map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}
@@ -1561,6 +1563,7 @@ function importOCRSelected(){
     if(!r) return;
     const catSel = document.querySelector(`[data-ocr-cat="${idx}"]`);
     const splitInput = document.querySelector(`[data-ocr-split="${idx}"]`);
+    const dateInput = document.querySelector(`[data-ocr-date="${idx}"]`);
     const splitCount = Math.max(1, parseInt(splitInput?.value) || 1);
     const finalAmount = r.amount / splitCount;
     let note = r.description;
@@ -1569,7 +1572,7 @@ function importOCRSelected(){
     }
     tr.expenses.push({
       id: 'exp-' + Date.now() + '-' + idx,
-      date: r.date,
+      date: dateInput && dateInput.value ? dateInput.value : r.date,
       placeId: 'general',
       category: catSel ? catSel.value : r.category,
       amount: finalAmount,
