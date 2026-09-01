@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Expense Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/pylynXnBp6kF79dyI=" crossorigin="" />
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -235,27 +236,52 @@ section[hidden]{display:none;}
 .map-toggle{ display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-soft); }
 .map-wrap{
   position:relative; background:#e4eef0; border-radius:12px; overflow:hidden;
-  border:1px solid var(--line); aspect-ratio: 0.97 / 1; max-height:560px;
+  border:1px solid var(--line); height:440px; z-index:1;
 }
-.map-wrap svg{ width:100%; height:100%; display:block; cursor:crosshair; }
-.brazil-shape{ fill:var(--sand-light); stroke:var(--sand); stroke-width:0.6; }
-.pin{ cursor:pointer; }
-.pin circle.dot{ transition:r 0.15s; }
-.pin:hover circle.dot{ r:3.2; }
-.pin.itinerary circle.dot{ fill:var(--coral); stroke:#fff; stroke-width:0.5; }
-.pin.custom circle.dot{ fill:#b8860b; stroke:#fff; stroke-width:0.5; }
-.pin.candidate circle.dot{ fill:var(--ocean); fill-opacity:0.55; stroke:#fff; stroke-width:0.4; }
-.pin.current circle.pulse{
-  fill:none; stroke:var(--coral); stroke-width:0.6; opacity:0.7;
-  animation: pulse-ring 1.8s ease-out infinite;
-  transform-origin:center;
-}
-@keyframes pulse-ring{
-  0%{ r:2.4; opacity:0.7; }
-  100%{ r:8; opacity:0; }
-}
+.map-wrap #travelMap{ width:100%; height:100%; background:#dce6e6; }
+.map-wrap .leaflet-container{ font-family:'Inter', sans-serif; }
 .map-hint{ font-size:12px; color:var(--ink-soft); margin-top:10px; }
 .map-credit{ font-size:10.5px; color:var(--ink-soft); opacity:0.7; margin-top:4px; }
+
+/* Trip finder */
+.trip-form{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+.trip-form .field{ flex:1; min-width:150px; }
+.trip-invert{ padding-bottom:9px; }
+.trip-invert button{
+  width:38px; height:38px; border-radius:9px; border:1px solid var(--line-strong);
+  background:#fff; color:var(--ocean); font-size:18px; cursor:pointer;
+}
+.trip-opt{
+  border:1px solid var(--line); border-radius:12px; padding:14px; margin-top:12px; background:var(--paper);
+}
+.trip-opt.best{ border-color:var(--coral); box-shadow:0 0 0 1px var(--coral); }
+.trip-opt-head{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.trip-opt-mode{ font-weight:600; font-size:15px; }
+.trip-opt-price{ font-family:'IBM Plex Mono',monospace; font-weight:700; color:var(--coral); font-size:16px; }
+.trip-opt-badge{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; font-weight:700;
+  background:var(--coral); color:#fff; border-radius:6px; padding:2px 7px;
+}
+.trip-opt-meta{ display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-size:12.5px; color:var(--ink-soft); }
+.trip-opt-seg{ margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; }
+.trip-opt-seg-head{ font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--ink-soft); opacity:.8; font-weight:600; }
+.trip-opt-seg-row{ display:flex; justify-content:space-between; gap:8px; margin-top:6px; font-size:13px; flex-wrap:wrap; }
+
+/* Leaflet custom markers */
+.tm-marker{ position:relative; }
+.tm-pin{
+  position:absolute; left:0; top:0; width:22px; height:22px; border-radius:50% 50% 50% 0;
+  transform:rotate(-45deg); border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.4);
+}
+.tm-pulse{
+  position:absolute; left:3px; top:3px; width:16px; height:16px; border-radius:50%;
+  background:rgba(232,84,42,.4); transform:translate(2px,-2px);
+  animation:tm-pulse-ring 1.8s ease-out infinite;
+}
+@keyframes tm-pulse-ring{
+  0%{ opacity:.8; transform:translate(2px,-2px) scale(.7); }
+  100%{ opacity:0; transform:translate(2px,-2px) scale(2); }
+}
 
 /* ---------- MODAL / PANEL ---------- */
 .overlay{
@@ -496,18 +522,26 @@ section[hidden]{display:none;}
   <section id="tab-map" hidden>
     <div class="card">
       <p class="section-title">Tu mapa</p>
-      <p class="section-hint">Tocá cualquier punto del mapa para clavar un pin nuevo. Tocá un pin para ver o cargar sus gastos.</p>
+      <p class="section-hint">Mapa real del mundo: hacé zoom y navegá libre. Tocá cualquier punto para clavar un pin nuevo. Tocá un pin para ver sus gastos.</p>
       <div class="map-toolbar">
         <label class="map-toggle"><input type="checkbox" id="toggleCandidates" /> Mostrar lugares sugeridos</label>
       </div>
       <div class="map-wrap">
-        <svg id="brazilMap" viewBox="219.59 512.14 110.88 114.32" xmlns="http://www.w3.org/2000/svg">
-          <path class="brazil-shape" d="M286.631,618.464l5.402-10.391l0.198-8.73l10.079-6.501h5.645l4.435-7.512l0.804-14.418l-1.815-3.855l10.684-9.751l0.406-10.761l-14.514-7.105l-17.53-5.48l-8.264-0.812l2.221-4.669l-0.604-7.104l-1.808-0.596l-2.671,5.308l-1.4,1.754l-3.595-1.59l-12.093,4.261l-4.028-5.073l0.648-5.299l-3.804,3.872l-4.201-2.265l-0.424,0.597l0.009,1.841l3.622,1.945l-5.437,5.73l-3.432-0.034l-3.475-3.535l-3.933,0.121l-0.484,4.2l2.256,2.739l-2.663,8.532l-3.112,0.241l-4.953,3.13l-1.21,6.146l4.296,4.599l0.787-0.89l3.017-0.812l2.576,4.34l7.374-3.164l2.861,0.165l1.971,6.976l10.52,3.337l1.815,5.564l4.478,0.537l2.135,5.314l-1.443,4.729l1.884,2.474l-0.276,3.683l5.048-0.477l4.625,5.844l-0.363,4.105l2.74,2.316l-6.57,9.95L286.631,618.464L286.631,618.464z"></path>
-          <g id="pinLayer"></g>
-        </svg>
+        <div id="travelMap"></div>
       </div>
       <p class="map-hint">Coral: itinerario. Dorado: pines propios. Celeste: sugeridos.</p>
-      <p class="map-credit">Contorno base: Al MacDonald / Fritz Lekschas (CC BY-SA 3.0)</p>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <p class="section-title">¿Cómo llegar?</p>
+      <p class="section-hint">Compará opciones de viaje entre dos lugares: ómnibus, BlaBlaCar, uber, avión, y combinaciones. Ordenadas de más barata a más cara.</p>
+      <div class="trip-form">
+        <div class="field"><label>De dónde salís</label><select id="tripFrom"></select></div>
+        <div class="field"><label>A dónde vas</label><select id="tripTo"></select></div>
+        <div class="trip-invert" title="Invertir"><button type="button" id="tripSwap">⇄</button></div>
+        <button type="button" class="btn-secondary" id="tripSearch" style="min-width:120px;">Buscar opciones</button>
+      </div>
+      <div id="tripResults"></div>
     </div>
   </section>
 
@@ -719,6 +753,7 @@ section[hidden]{display:none;}
 
 <div class="toast" id="toast"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
 const STORAGE_KEY = 'expense-trackers-v1';
 const ACTIVE_KEY = 'expense-active-tracker';
@@ -1196,9 +1231,44 @@ function renderRates(){
   if(ub) ub.addEventListener('change', e => { const v = Number(e.target.value); if(v>0){ tr.rates.usdBrl=v; renderAll(); saveAll(); }});
 }
 
+let travelMap = null;
+let travelMarkers = [];
+
+function initTravelMap(){
+  if(travelMap) return;
+  if(typeof L === 'undefined') return;
+  travelMap = L.map('travelMap', { zoomControl:true }).setView([-14.24, -51.93], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(travelMap);
+  travelMap.on('click', e => {
+    pendingPinCoords = { lat: e.latlng.lat, lon: e.latlng.lng };
+    document.getElementById('pinName').value = '';
+    document.getElementById('pinRegion').value = '';
+    document.getElementById('pinModalOverlay').hidden = false;
+    setTimeout(()=>document.getElementById('pinName').focus(), 30);
+  });
+}
+
+const pinIconColors = { itinerary:'#e8542a', custom:'#b8860b', candidate:'#0e5c68' };
+
+function markerDivIcon(kind, isCurrent){
+  const color = pinIconColors[kind] || '#0e5c68';
+  const pulse = isCurrent ? '<span class="tm-pulse"></span>' : '';
+  return L.divIcon({
+    className:'tm-marker',
+    html:`${pulse}<span class="tm-pin" style="background:${color}"></span>`,
+    iconSize:[22,26],
+    iconAnchor:[11,24],
+    popupAnchor:[0,-20]
+  });
+}
+
 function renderMap(){
   const tr = t(); if(!tr) return;
-  const layer = document.getElementById('pinLayer');
+  initTravelMap();
+  if(!travelMap) return;
   const showSeedCandidates = document.getElementById('toggleCandidates').checked;
   const cur = currentStop(tr);
   const withCoords = tr.places.filter(p => {
@@ -1207,19 +1277,195 @@ function renderMap(){
     if(p.source === 'custom') return true;
     return showSeedCandidates;
   });
-  layer.innerHTML = withCoords.map(p => {
-    const {x,y} = llToXY(p.lat, p.lon);
+  travelMarkers.forEach(m => travelMap.removeLayer(m));
+  travelMarkers = [];
+  withCoords.forEach(p => {
     let kind = 'candidate';
     if(p.inItinerary) kind = 'itinerary';
     else if(p.source === 'custom') kind = 'custom';
-    const cls = 'pin ' + kind + (cur && cur.id===p.id ? ' current' : '');
-    const r = p.inItinerary ? 2.1 : (kind === 'custom' ? 2.0 : 1.5);
-    return `<g class="${cls}" data-id="${p.id}" transform="translate(${x.toFixed(2)},${y.toFixed(2)})">
-      ${cur && cur.id===p.id ? '<circle class="pulse" r="2.4"></circle>' : ''}
-      <circle class="dot" r="${r}"></circle>
-    </g>`;
+    const m = L.marker([p.lat, p.lon], { icon: markerDivIcon(kind, cur && cur.id===p.id) })
+      .addTo(travelMap)
+      .bindPopup('<strong>' + p.name + '</strong>'
+        + (p.region ? '<br><span style="color:#666;font-size:12px">' + p.region + '</span>' : ''));
+    m.on('click', () => openPlacePanel(p.id));
+    travelMarkers.push(m);
+  });
+}
+
+// ========== TRIP FINDER (¿Cómo llegar?) ==========
+function haversineKm(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+
+// heurísticas aproximadas por modo (BRL), basadas en recorridos reales de Brasil
+const BUS_SPEED = 60;
+const BUS_BASE = 18, BUS_PER_KM = 0.18;
+const BLA = { base:30, perKm:0.09, speed:80 };          // BlaBlaCar
+const UBER_SHORT = { maxKm:80, base:6, perKm:1.8 };     // uber urbano
+const UBER_LONG = { base:80, perKm:0.55, speed:90 };    // uber/113 viajero largo
+const PLANE = { base:220, perKm:0.75 };                 // avión
+const VAN = { base:25, perKm:0.30, speed:65 };          // van/transfer privado
+
+function roundCur(x){ return Math.round(x*100)/100; }
+
+// Distancia por carretera ~ distancia en línea * factor
+function roadKm(km){ return km * 1.27; }
+
+function timeHrs(km, speed){ return km/speed; }
+function fmtDurHrs(h){
+  if(h < 1.4) return Math.round(h*60) + ' min';
+  return (Math.floor(h) + ' h ' + (h%1>0? Math.round((h%1)*60)+' min':'')).replace(' 0 min','');
+}
+
+function planDirect(mode, name, price, km, hours, tags){
+  return { mode, name, price, km, hours, transfers:0, tags, via:[] };
+}
+function planVia(mode, name, mainPrice, km, hours, legs, tags){
+  return { mode, name, price: mainPrice, km, hours, transfers:legs.length-1, tags, via:legs };
+}
+
+function estimateTrip(a, b, tracker){
+  const km = haversineKm(a.lat,a.lon,b.lat,b.lon);
+  const rk = roadKm(km);
+  const cur = tracker ? tracker.primaryCurrency : 'BRL';
+  const conv = tracker && tracker.rates && tracker.rates.brlArs ? tracker.rates.brlArs : 320;
+  const toMain = x => cur === 'BRL' ? x : cur === 'ARS' ? x*conv : x*5.3;
+  const fmt = x => cur === 'ARS' ? '$ '+Math.round(x).toLocaleString('es-AR') : (cur==='USD'?'US$ ':'R$ ')+Math.round(x).toLocaleString('es-AR');
+
+  const opt = (plan) => ({ ...plan, priceMain: toMain(plan.price), fmt: fmt(toMain(plan.price)) });
+
+  const out = [];
+
+  // ómnibus directo
+  if(rk <= 700){
+    const price = BUS_BASE + rk*BUS_PER_KM;
+    out.push(opt(planDirect('bus', 'Ómnibus', price, rk, timeHrs(rk,BUS_SPEED), ['directo'])));
+  } else {
+    // división en ~2 tramos
+    const seg = rk/2;
+    out.push(opt(planVia('bus','Ómnibus (con transbordo)', BUS_BASE + rk*BUS_PER_KM, rk, timeHrs(rk,BUS_SPEED)+1.5,
+      [{label:'Tramo 1', seg, price:BUS_BASE + seg*BUS_PER_KM, hours:timeHrs(seg,BUS_SPEED)}, {label:'Tramo 2', seg, price:BUS_BASE + seg*BUS_PER_KM, hours:timeHrs(seg,BUS_SPEED)}], ['1 transbordo'])));
+  }
+
+  // BlaBlaCar
+  if(rk <= 500){
+    out.push(opt(planDirect('bla', 'BlaBlaCar', BLA.base + rk*BLA.perKm, rk, timeHrs(rk,BLA.speed), ['compartido'])));
+  }
+
+  // Uber corto (viaje urbano)
+  if(rk <= 80){
+    out.push(opt(planDirect('uber', 'Uber', UBER_SHORT.base + rk*UBER_SHORT.perKm, rk, timeHrs(rk,45), ['directo'])));
+  }
+
+  // Uber/transfer largo + tramo adicional
+  if(rk > 60 && rk <= 500){
+    out.push(opt(planDirect('uber', 'Uber viaje', UBER_LONG.base + rk*UBER_LONG.perKm, rk, timeHrs(rk,UBER_LONG.speed), ['directo'])));
+  }
+
+  // Van / transfer privado
+  if(rk >= 50){
+    out.push(opt(planDirect('van', 'Van privada', VAN.base + rk*VAN.perKm, rk, timeHrs(rk,VAN.speed), ['directo'])));
+  }
+
+  // Avión (somos largas distancias)
+  if(km >= 400){
+    const price = PLANE.base + km*PLANE.perKm;
+    const legs = [{label:'Vuelo', seg:km, price, hours:timeHrs(km,550)}];
+    if(km > 900){
+      legs.push({label:'Tramo terrestre', seg:120, price: BUS_BASE + 120*BUS_PER_KM, hours:1.6});
+    }
+    const totalPrice = legs.reduce((s,l)=>s+l.price,0);
+    const totalHours = legs.reduce((s,l)=>s+l.hours,0) + 2.5;
+    out.push(opt(planVia('plane','Avión', totalPrice, km, totalHours, legs, km>900 ? ['con tramo terreno'] : ['directo'])));
+  }
+
+  // Combos terrestres (ómnibus + uber primeras/últimas millas)
+  if(rk >= 60){
+    const busLeg = BUS_BASE + rk*BUS_PER_KM;
+    const local = UBER_SHORT.base + 15*UBER_SHORT.perKm;
+    const total = busLeg + 2*local;
+    const legs = [
+      {label:'Uber hasta terminal', seg:15, price: local, hours:0.4},
+      {label:'Ómnibus', seg:rk, price: busLeg, hours:timeHrs(rk,BUS_SPEED)},
+      {label:'Uber a destino', seg:15, price: local, hours:0.4}
+    ];
+    const totalH = legs.reduce((s,l)=>s+l.hours,0)+0.8;
+    out.push(opt(planVia('combo','Combo: Uber + ómnibus', total, rk, totalH, legs, ['2 transbordos'])));
+  }
+
+  // ordenar por precio
+  out.sort((x,y)=>x.priceMain-y.priceMain).forEach((o,i)=>o.rank=i+1);
+  return out;
+}
+
+function renderTripSelects(){
+  const tr = t(); if(!tr) return;
+  const opts = tr.places.filter(p=>p.lat!=null && p.lon!=null)
+    .map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('tripFrom').innerHTML = '<option value="">Elegí salida...</option>' + opts;
+  document.getElementById('tripTo').innerHTML = '<option value="">Elegí destino...</option>' + opts;
+}
+
+function searchTrip(){
+  const tr = t(); if(!tr) return;
+  const fromId = document.getElementById('tripFrom').value;
+  const toId = document.getElementById('tripTo').value;
+  const res = document.getElementById('tripResults');
+  if(!fromId || !toId){
+    res.innerHTML = '<div class="empty-state">Elegí los dos lugares primero.</div>';
+    return;
+  }
+  if(fromId === toId){
+    res.innerHTML = '<div class="empty-state">Elegí dos lugares distintos.</div>';
+    return;
+  }
+  const A = tr.places.find(p=>p.id===fromId);
+  const B = tr.places.find(p=>p.id===toId);
+  if(!A || !B || A.lat==null || B.lat==null){
+    res.innerHTML = '<div class="empty-state">Esos lugares no tienen coordenadas para calcular rutas.</div>';
+    return;
+  }
+  const km = haversineKm(A.lat,A.lon,B.lat,B.lon);
+  const rk = roadKm(km);
+  const opts = estimateTrip(A, B, tr);
+  const head = `<div style="font-size:13px;color:var(--ink-soft);margin-bottom:6px;">
+    <strong>${A.name}</strong> → <strong>${B.name}</strong> · ${rk.toFixed(0)} km estimados por carretera</div>`;
+  res.innerHTML = head + opts.map(o => {
+    const badge = o.rank===1 ? '<span class="trip-opt-badge">Más barata</span>' : '';
+    const tags = o.tags && o.tags.length ? '<span style="color:var(--ink-soft);font-size:11px;">' + o.tags.join(' · ') + '</span>' : '';
+    const via = o.via && o.via.length ? `
+      <div class="trip-opt-seg">
+        <div class="trip-opt-seg-head">${o.transfers>0 ? o.transfers+' transbordo(s)' : 'Detalle'}</div>
+        ${o.via.map(v=>`<div class="trip-opt-seg-row"><span>${v.label}</span><span class="mono">${v.seg.toFixed(0)} km · ${fmtDurHrs(v.hours)}</span></div>`).join('')}
+      </div>` : '';
+    return `<div class="trip-opt ${o.rank===1?'best':''}">
+      <div class="trip-opt-head">
+        <div class="trip-opt-mode">${o.name} ${badge}</div>
+        <div class="trip-opt-price">${o.fmt}</div>
+      </div>
+      <div class="trip-opt-meta">
+        <span>⏱ ${fmtDurHrs(o.hours)}</span>
+        <span>↔ ${o.transfers} transbordo${o.transfers===1?'':'s'}</span>
+        <span>↗ ${rk.toFixed(0)} km</span>
+        ${tags}
+      </div>
+      ${via}
+    </div>`;
   }).join('');
 }
+
+document.getElementById('tripSwap').addEventListener('click', () => {
+  const f = document.getElementById('tripFrom');
+  const t2 = document.getElementById('tripTo');
+  const tmp = f.value; f.value = t2.value; t2.value = tmp;
+});
+document.getElementById('tripSearch').addEventListener('click', searchTrip);
+document.getElementById('tripFrom').addEventListener('change', searchTrip);
+document.getElementById('tripTo').addEventListener('change', searchTrip);
 
 function renderSettings(){
   const tr = t(); if(!tr) return;
@@ -1268,6 +1514,7 @@ function renderAll(){
   renderExpenseTable();
   renderRates();
   renderMap();
+  renderTripSelects();
   renderSettings();
 }
 
@@ -1661,6 +1908,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     ['dashboard','expenses','map','settings'].forEach(tab => {
       document.getElementById('tab-'+tab).hidden = btn.dataset.tab !== tab;
     });
+    if(btn.dataset.tab === 'map'){
+      setTimeout(()=>{ renderMap(); if(travelMap) travelMap.invalidateSize(); }, 60);
+    }
   });
 });
 
@@ -1669,6 +1919,9 @@ function goToTab(tabName){
   ['dashboard','expenses','map','settings'].forEach(tab => {
     document.getElementById('tab-'+tab).hidden = tab !== tabName;
   });
+  if(tabName === 'map'){
+    setTimeout(()=>{ renderMap(); if(travelMap) travelMap.invalidateSize(); }, 60);
+  }
 }
 
 function goToExpensesTabFor(placeId){
@@ -2033,30 +2286,6 @@ document.getElementById('cloudPullBtn').addEventListener('click', async () => {
 
 // Map events
 document.getElementById('toggleCandidates').addEventListener('change', renderMap);
-
-function svgPointFromEvent(svg, evt){
-  const pt = svg.createSVGPoint();
-  const touch = evt.touches && evt.touches[0];
-  pt.x = touch ? touch.clientX : evt.clientX;
-  pt.y = touch ? touch.clientY : evt.clientY;
-  return pt.matrixTransform(svg.getScreenCTM().inverse());
-}
-
-document.getElementById('brazilMap').addEventListener('click', e => {
-  const svg = document.getElementById('brazilMap');
-  const pinEl = e.target.closest('.pin');
-  if(pinEl){
-    openPlacePanel(pinEl.dataset.id);
-    return;
-  }
-  const pt = svgPointFromEvent(svg, e);
-  const {lat, lon} = xyToLL(pt.x, pt.y);
-  pendingPinCoords = {lat, lon};
-  document.getElementById('pinName').value = '';
-  document.getElementById('pinRegion').value = '';
-  document.getElementById('pinModalOverlay').hidden = false;
-  setTimeout(()=>document.getElementById('pinName').focus(), 30);
-});
 
 document.getElementById('pinModalCancel').addEventListener('click', () => {
   document.getElementById('pinModalOverlay').hidden = true;
