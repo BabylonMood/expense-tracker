@@ -1522,7 +1522,17 @@ function showOCRReview(rawText){
   if(rawText){
     debugHtml = `<details style="margin-bottom:14px;"><summary style="font-size:12px; color:var(--ink-soft); cursor:pointer; font-family:'IBM Plex Mono',monospace;">Ver texto OCR extraido</summary><pre style="font-size:11px; background:#f5f5f5; padding:10px; border-radius:8px; max-height:200px; overflow:auto; white-space:pre-wrap; margin-top:8px; font-family:'IBM Plex Mono',monospace;">${rawText.replace(/</g,'&lt;')}</pre></details>`;
   }
-  list.innerHTML = debugHtml + ocrDetected.map((r, i) => {
+  const commonDate = ocrDetected.length ? ocrDetected[0].date : todayStr();
+  list.innerHTML = debugHtml + `
+    <div style="margin-bottom:12px; padding:12px; background:var(--bg-soft,#f5f7f7); border-radius:10px; border:1px solid var(--line-soft,#e3e7e7);">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <label style="font-size:12px; color:var(--ink-soft); display:flex; align-items:center; gap:6px; flex:1; min-width:180px;">Fecha de estos gastos (aplica a todos):
+          <input type="date" id="ocrCommonDate" value="${commonDate}" style="flex:1; min-width:140px; padding:6px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px;" />
+        </label>
+      </div>
+      <div style="font-size:11px; color:var(--ink-soft); margin-top:6px;">Usá esto si el OCR no detectó la fecha. Después podés ajustar cada uno por separado.</div>
+    </div>
+    ` + ocrDetected.map((r, i) => {
     const srcLabel = r.originalAmount ? `<span style="font-size:11px;color:var(--ink-soft);">(${r.originalAmount.toFixed(2)} USDc)</span>` : '';
     return `
     <div class="ocr-review-item">
@@ -1538,6 +1548,7 @@ function showOCRReview(rawText){
             ${tr.categories.map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
+        <input type="text" class="ocr-review-note" data-ocr-note="${i}" placeholder="Nota (ej: cena, super, uber...)" value="" style="flex:1; margin-top:6px; width:100%; padding:5px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:12px;" />
         <div class="ocr-review-split">
           <label style="font-size:11px; color:var(--ink-soft); margin-top:6px; display:flex; align-items:center; gap:6px;">
             Dividir entre:
@@ -1549,6 +1560,14 @@ function showOCRReview(rawText){
     </div>
   `}).join('');
   document.getElementById('ocrReviewOverlay').hidden = false;
+  const commonDateEl = document.getElementById('ocrCommonDate');
+  if(commonDateEl){
+    commonDateEl.addEventListener('change', e => {
+      const v = e.target.value;
+      if(!v) return;
+      document.querySelectorAll('.ocr-review-date').forEach(d => d.value = v);
+    });
+  }
 }
 
 function importOCRSelected(){
@@ -1564,9 +1583,14 @@ function importOCRSelected(){
     const catSel = document.querySelector(`[data-ocr-cat="${idx}"]`);
     const splitInput = document.querySelector(`[data-ocr-split="${idx}"]`);
     const dateInput = document.querySelector(`[data-ocr-date="${idx}"]`);
+    const noteInput = document.querySelector(`[data-ocr-note="${idx}"]`);
     const splitCount = Math.max(1, parseInt(splitInput?.value) || 1);
     const finalAmount = r.amount / splitCount;
+    const extraNote = noteInput ? noteInput.value.trim() : '';
     let note = r.description;
+    if(extraNote){
+      note = extraNote + (note ? ' (' + note + ')' : '');
+    }
     if(splitCount > 1){
       note = (note ? note + ' | ' : '') + 'Original: ' + fmtCur(r.amount, r.currency, tr) + ' / ' + splitCount + ' = ' + fmtCur(finalAmount, r.currency, tr);
     }
