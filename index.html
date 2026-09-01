@@ -298,6 +298,9 @@ section[hidden]{display:none;}
 .ocr-review-amount{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:var(--coral); font-size:14px; white-space:nowrap; }
 .ocr-review-cat{ padding:3px 8px; border-radius:6px; border:1px solid var(--line-strong); font-size:11px; background:#fff; cursor:pointer; }
 .ocr-review-split{ margin-top:4px; }
+.ocr-review-note-wrap{ margin-top:8px; display:flex; align-items:center; gap:6px; }
+.ocr-review-note-label{ font-size:11px; color:var(--ink-soft); font-weight:600; white-space:nowrap; }
+.ocr-review-note{ flex:1; min-width:0; padding:6px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px; background:#fff; }
 
 /* ---------- TOAST ---------- */
 .toast{
@@ -1548,7 +1551,10 @@ function showOCRReview(rawText){
             ${tr.categories.map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
-        <input type="text" class="ocr-review-note" data-ocr-note="${i}" placeholder="Nota (ej: cena, super, uber...)" value="" style="flex:1; margin-top:6px; width:100%; padding:5px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:12px;" />
+        <div class="ocr-review-note-wrap">
+          <label class="ocr-review-note-label" for="ocrNote${i}">Nota</label>
+          <input type="text" id="ocrNote${i}" class="ocr-review-note" data-ocr-note="${i}" placeholder="Ej: cena, super, uber, entrada..." value="" />
+        </div>
         <div class="ocr-review-split">
           <label style="font-size:11px; color:var(--ink-soft); margin-top:6px; display:flex; align-items:center; gap:6px;">
             Dividir entre:
