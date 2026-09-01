@@ -1356,13 +1356,23 @@ function parseOCRText(text, tracker){
     return null;
   }
 
+  function parseNumStr(s){
+    s = s.trim();
+    if(s.includes('.') && s.includes(',')){
+      return s.lastIndexOf(',') > s.lastIndexOf('.')
+        ? parseFloat(s.replace(/\./g,'').replace(',','.'))
+        : parseFloat(s.replace(/,/g,''));
+    }
+    if(s.includes(',')) return parseFloat(s.replace(',','.'));
+    return parseFloat(s);
+  }
+
   function extractAmountAndMerchant(line){
     let m;
 
     m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\s*USDc/i);
     if(m){
-      let raw = m[1].replace(/\./g,'').replace(',','.');
-      const val = parseFloat(raw);
+      const val = parseNumStr(m[1]);
       if(!isNaN(val) && val > 0){
         let merchant = '';
         const before = line.replace(/[-\u2212]?\s*[\d]+[.,]\d{2}\s*USDc.*$/i,'').trim();
@@ -1375,15 +1385,13 @@ function parseOCRText(text, tracker){
 
     m = line.match(/[-\u2212]?\s*R\$\s*([\d]+[.,]\d{2})/i);
     if(m){
-      let raw = m[1].replace(/\./g,'').replace(',','.');
-      const val = parseFloat(raw);
+      const val = parseNumStr(m[1]);
       if(!isNaN(val) && val > 0) return {amount: Math.abs(val), currency: 'BRL', merchant: ''};
     }
 
     m = line.match(/[-\u2212]?\s*([\d]+[.,]\d{2})\s*BRL/i);
     if(m){
-      let raw = m[1].replace(/\./g,'').replace(',','.');
-      const val = parseFloat(raw);
+      const val = parseNumStr(m[1]);
       if(!isNaN(val) && val > 0) return {amount: Math.abs(val), currency: 'BRL', merchant: ''};
     }
 
