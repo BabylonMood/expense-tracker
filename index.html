@@ -1238,9 +1238,10 @@ function initTravelMap(){
   if(travelMap) return;
   if(typeof L === 'undefined') return;
   travelMap = L.map('travelMap', { zoomControl:true }).setView([-14.24, -51.93], 4);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
+    subdomains: 'abcd',
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
   }).addTo(travelMap);
   travelMap.on('click', e => {
     pendingPinCoords = { lat: e.latlng.lat, lon: e.latlng.lng };
