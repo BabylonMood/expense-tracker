@@ -180,6 +180,9 @@ section[hidden]{display:none;}
 .breakdown{ display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:22px 0; }
 .breakdown-col .section-title{font-size:14px;}
 
+.exp-filter-bar{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; margin-bottom:2px; }
+.exp-filter-bar .field{ flex:1; min-width:150px; margin:0; }
+.exp-filter-label{ font-size:11px; color:var(--ink-soft); display:block; margin-bottom:3px; text-transform:uppercase; letter-spacing:.4px; }
 .expense-table{width:100%; border-collapse:collapse; margin-top:6px;}
 .expense-table th{
   text-align:left; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft);
@@ -507,6 +510,33 @@ section[hidden]{display:none;}
 
     <div class="card" style="margin-top:16px;">
       <p class="section-title">Historial</p>
+      <div class="exp-filter-bar">
+        <label class="field">
+          <span class="exp-filter-label">Ordenar</span>
+          <select id="expSort">
+            <option value="date-desc">Fecha (más reciente)</option>
+            <option value="date-asc">Fecha (más antigua)</option>
+            <option value="amount-desc">Monto (mayor a menor)</option>
+            <option value="amount-asc">Monto (menor a mayor)</option>
+            <option value="category">Categoría (A-Z)</option>
+            <option value="place">Lugar (A-Z)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="exp-filter-label">Filtrar por</span>
+          <select id="expDateFilter">
+            <option value="all">Todo</option>
+            <option value="today">Hoy</option>
+            <option value="week">Esta semana</option>
+            <option value="month">Este mes</option>
+            <option value="day">Un día puntual…</option>
+          </select>
+        </label>
+        <label class="field" id="expDateFilterDayWrap" hidden>
+          <span class="exp-filter-label">Día</span>
+          <input type="date" id="expDateFilterDay" />
+        </label>
+      </div>
       <div id="expenseTableWrap"></div>
     </div>
   </section>
@@ -1175,12 +1205,46 @@ function renderExpenseTable(){
     wrap.innerHTML = '<div class="empty-state">Todavia no cargaste ningun gasto.</div>';
     return;
   }
-  const sorted = [...tr.expenses].sort((a,b)=> b.date.localeCompare(a.date));
+  const sortBy = (document.getElementById('expSort')||{}).value || 'date-desc';
+  const filterBy = (document.getElementById('expDateFilter')||{}).value || 'all';
+  const filterDay = (document.getElementById('expDateFilterDay')||{}).value || '';
+  const today = todayStr();
+
+  let list = tr.expenses.filter(e => {
+    if(filterBy === 'all') return true;
+    if(filterBy === 'today') return e.date === today;
+    if(filterBy === 'week'){
+      const t = new Date(today + 'T12:00:00');
+      const start = new Date(t); start.setDate(t.getDate() - t.getDay());
+      const startStr = start.toISOString().slice(0,10);
+      return e.date >= startStr && e.date <= today;
+    }
+    if(filterBy === 'month') return (e.date||'').slice(0,7) === today.slice(0,7);
+    if(filterBy === 'day') return filterDay && e.date === filterDay;
+    return true;
+  });
+
+  const nameOf = id => { const p = tr.places.find(pl=>pl.id===id); return p ? p.name : '\u2014'; };
+  list.sort((a,b) => {
+    if(sortBy === 'date-desc') return b.date.localeCompare(a.date);
+    if(sortBy === 'date-asc') return a.date.localeCompare(b.date);
+    if(sortBy === 'amount-desc') return toMain(b.amount,b.currency||mc,tr) - toMain(a.amount,a.currency||mc,tr);
+    if(sortBy === 'amount-asc') return toMain(a.amount,a.currency||mc,tr) - toMain(b.amount,b.currency||mc,tr);
+    if(sortBy === 'category') return (a.category||'').localeCompare(b.category||'');
+    if(sortBy === 'place') return nameOf(a.placeId).localeCompare(nameOf(b.placeId));
+    return 0;
+  });
+
+  if(list.length === 0){
+    wrap.innerHTML = '<div class="empty-state">No hay gastos para este filtro.</div>';
+    return;
+  }
+
   wrap.innerHTML = `
     <table class="expense-table">
       <thead><tr><th>Fecha</th><th>Lugar</th><th>Categoria</th><th>Nota</th><th>Monto</th><th></th></tr></thead>
       <tbody>
-        ${sorted.map(e => {
+        ${list.map(e => {
           const p = tr.places.find(pl=>pl.id===e.placeId);
           const cur = e.currency || mc;
           const splitTag = e.splitCount && e.splitCount > 1 ? `<div class="currency-tag" style="color:var(--green);">\u2248 original: ${fmtCur(e.splitOriginal||e.amount*e.splitCount, cur, tr)} / ${e.splitCount}</div>` : '';
@@ -2263,8 +2327,10 @@ document.getElementById('expenseForm').addEventListener('submit', e => {
 });
 
 document.getElementById('expenseTableWrap').addEventListener('click', e => {
-  const delId = e.target.dataset.del;
-  const editId = e.target.dataset.edit;
+  const btn = e.target.closest ? e.target.closest('[data-del],[data-edit]') : null;
+  if(!btn) return;
+  const delId = btn.dataset.del;
+  const editId = btn.dataset.edit;
   if(delId){
     const tr = t(); if(!tr) return;
     tr.expenses = tr.expenses.filter(ex => ex.id !== delId);
@@ -2282,14 +2348,15 @@ function openEditExpense(expId){
   const exp = tr.expenses.find(e=>e.id===expId);
   if(!exp) return;
   document.getElementById('editExpId').value = exp.id;
-  document.getElementById('editExpDate').value = exp.date;
-  document.getElementById('editExpAmount').value = exp.amount;
+  document.getElementById('editExpDate').value = exp.date || todayStr();
+  document.getElementById('editExpAmount').value = exp.amount != null ? exp.amount : '';
   document.getElementById('editExpNote').value = exp.note || '';
 
   const placeSel = document.getElementById('editExpPlace');
-  const itinerary = tr.places.filter(p=>p.inItinerary && p.id!=='general').sort((a,b)=>(a.order||0)-(b.order||0));
-  const general = tr.places.find(p=>p.id==='general');
-  const others = tr.places.filter(p=>!p.inItinerary && p.id!=='general');
+  const trPlaces = tr.places && tr.places.length ? tr.places : [{ id:'general', name:'General', inItinerary:true }];
+  const itinerary = trPlaces.filter(p=>p.inItinerary && p.id!=='general').sort((a,b)=>(a.order||0)-(b.order||0));
+  const general = trPlaces.find(p=>p.id==='general');
+  const others = trPlaces.filter(p=>!p.inItinerary && p.id!=='general');
   placeSel.innerHTML = `
     ${general ? `<optgroup label="General"><option value="${general.id}">${general.name}</option></optgroup>` : ''}
     ${itinerary.length ? `<optgroup label="En el itinerario">
@@ -2299,13 +2366,15 @@ function openEditExpense(expId){
       ${others.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
     </optgroup>
   `;
-  placeSel.value = exp.placeId;
+  if(trPlaces.some(p=>p.id===exp.placeId)) placeSel.value = exp.placeId;
 
   const catSel = document.getElementById('editExpCategory');
-  catSel.innerHTML = tr.categories.map(c=>`<option ${c===exp.category?'selected':''}>${c}</option>`).join('');
+  const cats = tr.categories && tr.categories.length ? tr.categories : ['Otros'];
+  catSel.innerHTML = cats.map(c=>`<option ${c===exp.category?'selected':''}>${c}</option>`).join('');
 
   const curSel = document.getElementById('editExpCurrency');
-  curSel.innerHTML = tr.currencies.map(c=>`<option value="${c.code}" ${c.code===(exp.currency||tr.primaryCurrency)?'selected':''}>${c.symbol}</option>`).join('');
+  const curs = tr.currencies && tr.currencies.length ? tr.currencies : [{code:tr.primaryCurrency||'BRL',symbol:tr.primaryCurrency||'BRL'}];
+  curSel.innerHTML = curs.map(c=>`<option value="${c.code}" ${c.code===(exp.currency||tr.primaryCurrency)?'selected':''}>${c.symbol||c.code}</option>`).join('');
 
   document.getElementById('editExpenseOverlay').hidden = false;
 }
@@ -2492,6 +2561,14 @@ document.getElementById('cloudPullBtn').addEventListener('click', async () => {
 
 // Map events
 document.getElementById('toggleCandidates').addEventListener('change', renderMap);
+
+// Expense filter events
+document.getElementById('expSort').addEventListener('change', renderExpenseTable);
+document.getElementById('expDateFilter').addEventListener('change', () => {
+  document.getElementById('expDateFilterDayWrap').hidden = document.getElementById('expDateFilter').value !== 'day';
+  renderExpenseTable();
+});
+document.getElementById('expDateFilterDay').addEventListener('change', renderExpenseTable);
 
 document.getElementById('pinModalCancel').addEventListener('click', () => {
   document.getElementById('pinModalOverlay').hidden = true;
