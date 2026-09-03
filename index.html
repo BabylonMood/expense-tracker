@@ -183,6 +183,24 @@ section[hidden]{display:none;}
 .exp-filter-bar{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; margin-bottom:2px; }
 .exp-filter-bar .field{ flex:1; min-width:150px; margin:0; }
 .exp-filter-label{ font-size:11px; color:var(--ink-soft); display:block; margin-bottom:3px; text-transform:uppercase; letter-spacing:.4px; }
+
+/* Year / month grouped history */
+.exp-year{ margin-top:14px; }
+.exp-year-head{ display:flex; align-items:baseline; justify-content:space-between; padding:6px 2px 8px;
+  border-bottom:1px solid var(--line-strong); margin-bottom:8px; }
+.exp-year-title{ font-family:'Fraunces', serif; font-size:20px; font-weight:600; color:var(--ink); }
+.exp-year-total{ font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--ink-soft); }
+.exp-month{ border:1px solid var(--line); border-radius:10px; margin-bottom:8px; background:var(--paper); overflow:hidden; }
+.exp-month-head{ display:flex; align-items:center; gap:10px; width:100%; padding:12px 14px;
+  background:none; border:none; cursor:pointer; text-align:left; font-family:'Inter', sans-serif; }
+.exp-month-head:hover{ background:rgba(0,0,0,0.02); }
+.exp-month-caret{ transition:transform 0.15s; color:var(--ink-soft); font-size:12px; }
+.exp-month.open .exp-month-caret{ transform:rotate(180deg); }
+.exp-month-name{ font-weight:600; font-size:14px; color:var(--ink); }
+.exp-month-meta{ margin-left:auto; font-size:12px; color:var(--ink-soft); white-space:nowrap; }
+.exp-month-body{ border-top:1px solid var(--line); padding:6px 8px; }
+.exp-month-body[hidden]{ display:none; }
+.exp-month-body .expense-table th{ padding:8px 6px; }
 .expense-table{width:100%; border-collapse:collapse; margin-top:6px;}
 .expense-table th{
   text-align:left; font-size:11px; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft);
@@ -291,6 +309,22 @@ section[hidden]{display:none;}
 }
 .modal h3{font-family:'Fraunces', serif; margin:0 0 14px; font-size:18px;}
 .modal-actions{display:flex; gap:10px; margin-top:16px;}
+/* Edit expense popover (anchored near the row's edit button) */
+#editExpensePop{
+  position:fixed; z-index:70; background:var(--paper); border:1px solid var(--line-strong); border-radius:12px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.18); padding:16px; width:300px; max-width:94vw;
+  max-height:85vh; overflow-y:auto; font-family:'Inter', sans-serif;
+}
+#editExpensePop[hidden]{ display:none; }
+#editExpensePop label{ font-size:12px; color:var(--ink-soft); font-weight:500; display:block; margin-bottom:4px; }
+#editExpensePop input, #editExpensePop select{
+  width:100%; border:1px solid var(--line-strong); border-radius:8px; padding:8px;
+  font-size:13px; background:#fff; color:var(--ink); box-sizing:border-box; font-family:'Inter', sans-serif;
+}
+.edit-pop-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.edit-pop-head h3{ margin:0; font-size:16px; }
+.edit-pop-close{ background:none; border:none; font-size:20px; line-height:1; color:var(--ink-soft); cursor:pointer; padding:0 4px; }
+.edit-pop-close:hover{ color:var(--coral); }
 .btn-secondary{
   flex:1; background:none; border:1px solid var(--line-strong); border-radius:9px; padding:9px; cursor:pointer;
   font-size:13px; font-family:'Inter', sans-serif;
@@ -737,41 +771,42 @@ section[hidden]{display:none;}
   </div>
 </div>
 
-<!-- Edit expense modal -->
-<div class="overlay" id="editExpenseOverlay" hidden>
-  <div class="modal">
+<!-- Edit expense popover -->
+<div id="editExpensePop" hidden>
+  <div class="edit-pop-head">
     <h3>Editar gasto</h3>
-    <form id="editExpenseForm">
-      <input type="hidden" id="editExpId" />
-      <div class="field" style="margin-bottom:12px;">
-        <label for="editExpDate">Fecha</label>
-        <input type="date" id="editExpDate" required />
-      </div>
-      <div class="field" style="margin-bottom:12px;">
-        <label for="editExpPlace">Lugar</label>
-        <select id="editExpPlace"></select>
-      </div>
-      <div class="field" style="margin-bottom:12px;">
-        <label for="editExpCategory">Categoria</label>
-        <select id="editExpCategory"></select>
-      </div>
-      <div class="field" style="margin-bottom:12px;">
-        <label for="editExpAmount">Monto</label>
-        <div class="amount-row">
-          <input type="number" id="editExpAmount" min="0" step="0.01" required />
-          <select id="editExpCurrency"></select>
-        </div>
-      </div>
-      <div class="field" style="margin-bottom:12px;">
-        <label for="editExpNote">Nota</label>
-        <input type="text" id="editExpNote" />
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-secondary" id="editExpCancel">Cancelar</button>
-        <button type="submit" class="btn-primary">Guardar</button>
-      </div>
-    </form>
+    <button type="button" class="edit-pop-close" id="editExpClose" title="Cerrar">\u00d7</button>
   </div>
+  <form id="editExpenseForm">
+    <input type="hidden" id="editExpId" />
+    <div class="field" style="margin-bottom:10px;">
+      <label for="editExpDate">Fecha</label>
+      <input type="date" id="editExpDate" required />
+    </div>
+    <div class="field" style="margin-bottom:10px;">
+      <label for="editExpPlace">Lugar</label>
+      <select id="editExpPlace"></select>
+    </div>
+    <div class="field" style="margin-bottom:10px;">
+      <label for="editExpCategory">Categoria</label>
+      <select id="editExpCategory"></select>
+    </div>
+    <div class="field" style="margin-bottom:10px;">
+      <label for="editExpAmount">Monto</label>
+      <div class="amount-row">
+        <input type="number" id="editExpAmount" min="0" step="0.01" required />
+        <select id="editExpCurrency"></select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label for="editExpNote">Nota</label>
+      <input type="text" id="editExpNote" />
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-secondary" id="editExpCancel">Cancelar</button>
+      <button type="submit" class="btn-primary">Guardar</button>
+    </div>
+  </form>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1240,11 +1275,27 @@ function renderExpenseTable(){
     return;
   }
 
-  wrap.innerHTML = `
+  // Group filtered+sorted expenses by year -> month
+  const byYear = {};
+  list.forEach(e => {
+    const d = e.date || '';
+    const year = d.slice(0,4);
+    const month = d.slice(5,7);
+    if(!byYear[year]) byYear[year] = {};
+    if(!byYear[year][month]) byYear[year][month] = [];
+    byYear[year][month].push(e);
+  });
+
+  const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const currentYM = today.slice(0,7);
+  const yearsSorted = Object.keys(byYear).sort((a,b)=>b.localeCompare(a));
+  const monthTotals = (expArr) => expArr.reduce((s,e)=>s+toMain(e.amount,e.currency||mc,tr),0);
+
+  const rowsHTML = expArr => `
     <table class="expense-table">
       <thead><tr><th>Fecha</th><th>Lugar</th><th>Categoria</th><th>Nota</th><th>Monto</th><th></th></tr></thead>
       <tbody>
-        ${list.map(e => {
+        ${expArr.map(e => {
           const p = tr.places.find(pl=>pl.id===e.placeId);
           const cur = e.currency || mc;
           const splitTag = e.splitCount && e.splitCount > 1 ? `<div class="currency-tag" style="color:var(--green);">\u2248 original: ${fmtCur(e.splitOriginal||e.amount*e.splitCount, cur, tr)} / ${e.splitCount}</div>` : '';
@@ -1260,7 +1311,44 @@ function renderExpenseTable(){
       </tbody>
     </table>
   `;
+
+  let html = '';
+  yearsSorted.forEach(year => {
+    const monthsSorted = Object.keys(byYear[year]).sort((a,b)=>b.localeCompare(a));
+    const yearTotal = Object.keys(byYear[year]).reduce((s,m)=>s+monthTotals(byYear[year][m]),0);
+    html += `<div class="exp-year">
+      <div class="exp-year-head">
+        <span class="exp-year-title">${year}</span>
+        <span class="exp-year-total">${fmtCur(yearTotal, mc, tr)}</span>
+      </div>`;
+    monthsSorted.forEach(month => {
+      const arr = byYear[year][month];
+      const ym = year + '-' + month;
+      const open = ym === currentYM;
+      html += `<div class="exp-month ${open ? 'open' : ''}">
+        <button type="button" class="exp-month-head" data-month="${ym}" aria-expanded="${open}">
+          <span class="exp-month-caret">\u25be</span>
+          <span class="exp-month-name">${MONTHS[Number(month)-1]} ${year}</span>
+          <span class="exp-month-meta">${arr.length} gasto${arr.length>1?'s':''} \u00b7 ${fmtCur(monthTotals(arr), mc, tr)}</span>
+        </button>
+        <div class="exp-month-body" ${open ? '' : 'hidden'}>${rowsHTML(arr)}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  wrap.innerHTML = html;
 }
+
+document.getElementById('expenseTableWrap').addEventListener('click', e => {
+  const head = e.target.closest('.exp-month-head');
+  if(!head) return;
+  const body = head.parentElement.querySelector('.exp-month-body');
+  const isOpen = !body.hidden;
+  body.hidden = isOpen;
+  head.setAttribute('aria-expanded', String(!isOpen));
+  head.parentElement.classList.toggle('open', !isOpen);
+});
 
 function renderRates(){
   const tr = t(); if(!tr) return;
@@ -2339,11 +2427,11 @@ document.getElementById('expenseTableWrap').addEventListener('click', e => {
     return;
   }
   if(editId){
-    openEditExpense(editId);
+    openEditExpense(editId, btn);
   }
 });
 
-function openEditExpense(expId){
+function openEditExpense(expId, anchorBtn){
   const tr = t(); if(!tr) return;
   const exp = tr.expenses.find(e=>e.id===expId);
   if(!exp) return;
@@ -2376,14 +2464,44 @@ function openEditExpense(expId){
   const curs = tr.currencies && tr.currencies.length ? tr.currencies : [{code:tr.primaryCurrency||'BRL',symbol:tr.primaryCurrency||'BRL'}];
   curSel.innerHTML = curs.map(c=>`<option value="${c.code}" ${c.code===(exp.currency||tr.primaryCurrency)?'selected':''}>${c.symbol||c.code}</option>`).join('');
 
-  document.getElementById('editExpenseOverlay').hidden = false;
+  showEditPop(anchorBtn);
 }
 
-document.getElementById('editExpCancel').addEventListener('click', () => {
-  document.getElementById('editExpenseOverlay').hidden = true;
-});
-document.getElementById('editExpenseOverlay').addEventListener('click', e => {
-  if(e.target.id === 'editExpenseOverlay') document.getElementById('editExpenseOverlay').hidden = true;
+function showEditPop(anchorBtn){
+  const pop = document.getElementById('editExpensePop');
+  pop.hidden = false;
+  const pad = 10;
+  const popW = pop.offsetWidth || 300, popH = pop.offsetHeight || 340;
+  let left, top;
+  if(anchorBtn){
+    const r = anchorBtn.getBoundingClientRect();
+    // place to the right of the button, else to the left if overflow
+    left = r.right + 8;
+    if(left + popW > window.innerWidth - pad) left = Math.max(pad, r.left - popW - 8);
+    top = r.top;
+    if(top + popH > window.innerHeight - pad) top = Math.max(pad, window.innerHeight - pad - popH);
+  } else {
+    left = Math.max(pad, (window.innerWidth - popW) / 2);
+    top = Math.max(pad, (window.innerHeight - popH) / 2);
+  }
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+  const inp = document.getElementById('editExpDate');
+  if(inp) inp.focus();
+}
+
+function closeEditPop(){
+  document.getElementById('editExpensePop').hidden = true;
+}
+
+document.getElementById('editExpCancel').addEventListener('click', closeEditPop);
+document.getElementById('editExpClose').addEventListener('click', closeEditPop);
+document.addEventListener('click', e => {
+  const pop = document.getElementById('editExpensePop');
+  if(pop.hidden) return;
+  if(pop.contains(e.target)) return;
+  if(e.target.closest && e.target.closest('.edit-btn')) return;
+  closeEditPop();
 });
 document.getElementById('editExpenseForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -2397,7 +2515,7 @@ document.getElementById('editExpenseForm').addEventListener('submit', e => {
   exp.amount = Number(document.getElementById('editExpAmount').value);
   exp.currency = document.getElementById('editExpCurrency').value;
   exp.note = document.getElementById('editExpNote').value.trim();
-  document.getElementById('editExpenseOverlay').hidden = true;
+  closeEditPop();
   renderAll();
   saveAll();
   showToast('Gasto actualizado');
@@ -2611,9 +2729,10 @@ document.getElementById('panelAddItinerary').addEventListener('click', () => {
 
 document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
-  ['modalOverlay','pinModalOverlay','placePanelOverlay','ocrReviewOverlay','newTrackerOverlay','editExpenseOverlay'].forEach(id => {
+  ['modalOverlay','pinModalOverlay','placePanelOverlay','ocrReviewOverlay','newTrackerOverlay'].forEach(id => {
     if(!document.getElementById(id).hidden) document.getElementById(id).hidden = true;
   });
+  closeEditPop();
   pendingCandidateId = null;
   pendingPinCoords = null;
 });
