@@ -244,6 +244,7 @@ section[hidden]{display:none;}
 .cat-row input{ flex:1; padding:8px 10px; border-radius:8px; border:1px solid var(--line-strong); font-size:13px; background:#fff; font-family:'Inter', sans-serif; }
 .cat-row button{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:16px; padding:4px; }
 .cat-row button:hover{ color:var(--coral); }
+.cat-manage-link{ background:none; border:none; font-size:11px; color:var(--ocean); cursor:pointer; font-family:'Inter', sans-serif; text-decoration:underline; padding:0; margin-left:4px; }
 .add-cat-btn{
   font-family:'IBM Plex Mono', monospace; font-size:12px; background:none;
   border:1px dashed var(--line-strong); border-radius:8px; padding:8px 14px;
@@ -431,8 +432,16 @@ section[hidden]{display:none;}
         <div class="label" id="statDayLabel">Día</div>
       </div>
       <div class="hero-stat">
+        <div class="num mono" id="statMonth">$ 0</div>
+        <div class="label" id="statMonthLabel">Este mes</div>
+      </div>
+      <div class="hero-stat">
         <div class="num mono" id="statAvg">$ 0</div>
-        <div class="label" id="statAvgLabel">Promedio diario</div>
+        <div class="label" id="statAvgLabel">Promedio/día</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num mono" id="statAvgMonth">$ 0</div>
+        <div class="label" id="statAvgMonthLabel">Promedio/mes</div>
       </div>
     </div>
   </div>
@@ -501,7 +510,7 @@ section[hidden]{display:none;}
           <select id="fPlace"></select>
         </div>
         <div class="field">
-          <label for="fCategory">Categoría</label>
+          <label for="fCategory">Categoría <button type="button" class="cat-manage-link" onclick="goToTab('settings')">Administrar</button></label>
           <select id="fCategory"></select>
         </div>
         <div class="field">
@@ -527,6 +536,7 @@ section[hidden]{display:none;}
       <div class="pace-grid">
         <div class="pace-stat"><div class="num mono" id="paceDay">–</div><div class="label" id="paceDayLabel">Día</div></div>
         <div class="pace-stat"><div class="num mono" id="paceAvg">$ 0</div><div class="label" id="paceAvgLabel">Promedio/día</div></div>
+        <div class="pace-stat"><div class="num mono" id="paceAvgMonth">$ 0</div><div class="label" id="paceAvgMonthLabel">Promedio/mes</div></div>
         <div class="pace-stat"><div class="num mono" id="paceToday">$ 0</div><div class="label">Gastado hoy</div></div>
       </div>
     </div>
@@ -656,10 +666,13 @@ section[hidden]{display:none;}
         </div>
       </div>
 
-      <div style="margin-top:20px; text-align:center;">
-        <button class="reset-link" id="exportBtn">Exportar datos (respaldo)</button>
-        <span style="margin:0 6px;">·</span>
-        <button class="reset-link" id="importBtn">Importar respaldo</button>
+      <div class="settings-group">
+        <div class="settings-group-title">Respaldo local</div>
+        <p class="setting-label" style="margin-bottom:8px;">Descargá o cargá un archivo JSON con todos tus trackers.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="submit-btn" id="exportBtn" style="font-size:12px;">Descargar respaldo</button>
+          <button class="submit-btn" id="importBtn" style="font-size:12px; background:var(--green);">Cargar respaldo</button>
+        </div>
         <input type="file" id="importFile" accept="application/json" hidden />
       </div>
     </div>
@@ -1081,7 +1094,20 @@ function renderHero(){
     dayLabelEl.textContent = 'Dia';
   }
   document.getElementById('statAvg').textContent = fmtCur(totalForAverage(tr) / Math.max(dayNum,1), mc, tr);
-  document.getElementById('statAvgLabel').textContent = 'Promedio/dia';
+  document.getElementById('statAvgLabel').textContent = 'Promedio/día';
+
+  // Este mes
+  const thisMonth = todayStr().slice(0,7);
+  const monthTotal = tr.expenses.filter(e=>(e.date||'').slice(0,7)===thisMonth)
+    .reduce((s,e)=>s+toMain(e.amount,e.currency||mc,tr),0);
+  document.getElementById('statMonth').textContent = fmtCur(monthTotal, mc, tr);
+  const monthNames = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  document.getElementById('statMonthLabel').textContent = monthNames[Number(thisMonth.slice(5,7))-1] + ' ' + thisMonth.slice(0,4);
+
+  // Promedio mensual
+  const monthsElapsed = Math.max(1, Math.ceil(dayNum / 30.44));
+  document.getElementById('statAvgMonth').textContent = fmtCur(totalForAverage(tr) / monthsElapsed, mc, tr);
+  document.getElementById('statAvgMonthLabel').textContent = 'Promedio/mes';
 
   const cur = currentStop(tr);
   const nowEl = document.getElementById('heroNow');
@@ -1227,7 +1253,10 @@ function renderPace(){
   const dayNum = Math.max(diffDays + 1, 1);
   document.getElementById('paceDay').textContent = diffDays >= 0 ? ('Dia ' + dayNum) : 'Aun no arranca';
   document.getElementById('paceAvg').textContent = fmtCur(totalForAverage(tr) / dayNum, mc, tr);
-  document.getElementById('paceAvgLabel').textContent = 'Promedio/dia';
+  document.getElementById('paceAvgLabel').textContent = 'Promedio/día';
+  const monthsElapsed = Math.max(1, Math.ceil(dayNum / 30.44));
+  document.getElementById('paceAvgMonth').textContent = fmtCur(totalForAverage(tr) / monthsElapsed, mc, tr);
+  document.getElementById('paceAvgMonthLabel').textContent = 'Promedio/mes';
   const todaySpend = tr.expenses.filter(e=>e.date===todayStr()).reduce((s,e)=>s+toMain(e.amount,e.currency||mc,tr),0);
   document.getElementById('paceToday').textContent = fmtCur(todaySpend, mc, tr);
 }
@@ -2277,6 +2306,7 @@ function goToTab(tabName){
   ['dashboard','expenses','map','settings'].forEach(tab => {
     document.getElementById('tab-'+tab).hidden = tab !== tabName;
   });
+  window.scrollTo(0,0);
   if(tabName === 'map'){
     setTimeout(()=>{ renderMap(); if(travelMap) { travelMap.focus && travelMap.focus(); } }, 60);
   }
