@@ -830,7 +830,7 @@ const ACTIVE_KEY = 'expense-active-tracker';
 
 const DEFAULT_CATEGORIES = ['Vuelos','Alojamiento','Comida y bebida','Transporte','Actividades y tours','Compras','Otros'];
 const DEFAULT_CURRENCIES = [{code:'BRL',symbol:'R$'},{code:'ARS',symbol:'$'},{code:'USD',symbol:'US$'}];
-const DEFAULT_AVG_EXCLUDED = ['Alojamiento','Vuelos'];
+const DEFAULT_AVG_EXCLUDED = ['Alojamiento','Vuelos','Transporte'];
 
 const SEED_PLACES = [
   {id:'rio-de-janeiro', name:'Rio de Janeiro', region:'State of Rio de Janeiro', inItinerary:true, start:'2026-08-01', end:'2026-08-04', order:1, lat:-22.9068, lon:-43.1729},
@@ -1023,6 +1023,13 @@ function loadData(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       trackers = JSON.parse(raw);
+      // migración: asegurar que transporte/vuelos/alojamiento estén excluidos del promedio
+      trackers.forEach(t2 => {
+        if(!Array.isArray(t2.avgExcluded)) t2.avgExcluded = [];
+        ['Alojamiento','Vuelos','Transporte'].forEach(cat => {
+          if((t2.categories||[]).includes(cat) && !t2.avgExcluded.includes(cat)) t2.avgExcluded.push(cat);
+        });
+      });
     } else {
       const migrated = migrateOldData();
       if(migrated){
