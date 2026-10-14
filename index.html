@@ -833,39 +833,12 @@ const DEFAULT_CURRENCIES = [{code:'BRL',symbol:'R$'},{code:'ARS',symbol:'$'},{co
 const DEFAULT_AVG_EXCLUDED = ['Alojamiento','Vuelos','Transporte'];
 
 const SEED_PLACES = [
-  {id:'rio-de-janeiro', name:'Rio de Janeiro', region:'State of Rio de Janeiro', inItinerary:true, start:'2026-08-01', end:'2026-08-04', order:1, lat:-22.9068, lon:-43.1729},
-  {id:'paraty', name:'Paraty', region:'State of Rio de Janeiro', inItinerary:true, start:'2026-08-04', end:null, order:2, lat:-23.2178, lon:-44.7131},
+  {id:'rio-de-janeiro', name:'Rio de Janeiro', region:'RJ', inItinerary:true, start:'2025-11-02', end:'2025-11-05', order:1, lat:-22.9068, lon:-43.1729},
+  {id:'ilha-grande', name:'Ilha Grande', region:'RJ', inItinerary:true, start:'2025-11-05', end:null, order:2, lat:-23.15, lon:-44.23},
   {id:'general', name:'Gastos generales (vuelos, seguro, etc.)', region:'Todo el viaje', lat:null, lon:null},
-  {id:'tibau-do-sul', name:'Tibau do Sul', region:'State of Rio Grande do Norte', lat:-6.1928, lon:-35.0886},
-  {id:'praia-aguas-quentes', name:'Praia das Aguas Quentes', region:null, rating:'4.8', lat:-6.15, lon:-35.15},
-  {id:'itaunas', name:'Itaunas', region:'Conceicao da Barra - ES', lat:-18.3833, lon:-39.7167},
-  {id:'sao-sebastiao', name:'Sao Sebastiao', region:'State of Sao Paulo', lat:-23.8175, lon:-45.4064},
-  {id:'catedral-rio', name:'Catedral Metropolitana', region:'Rio de Janeiro', rating:'4.7', lat:-22.9105, lon:-43.1804},
-  {id:'outside-reef', name:'Outside Reef Marine Park', region:'Porto Seguro - BA', rating:'4.7', lat:-16.4497, lon:-39.0647},
-  {id:'serra-capivara', name:'Serra da Capivara', region:null, rating:'4.7', lat:-8.7, lon:-42.5},
-  {id:'morro-branco', name:'Beach of Morro Branco', region:null, rating:'4.8', lat:-4.1667, lon:-38.1167},
-  {id:'arembepe', name:'Arembepe', region:'Camacari - BA', lat:-12.7667, lon:-38.2},
-  {id:'barra-grande', name:'Barra Grande', region:'Marau - BA', lat:-14.2667, lon:-38.9167},
-  {id:'arraial-dajuda', name:'Arraial d\'Ajuda', region:'Porto Seguro - BA', lat:-16.4778, lon:-39.0733},
-  {id:'corumbau', name:'Praia de Corumbau', region:null, rating:'4.9', lat:-16.85, lon:-39.1667},
-  {id:'caravelas', name:'Caravelas', region:'State of Bahia', lat:-17.7125, lon:-39.2547},
-  {id:'serra-dos-orgaos', name:'Serra dos Orgaos', region:null, rating:'4.8', lat:-22.45, lon:-42.9833},
-  {id:'ilheus', name:'Ilheus', region:'State of Bahia', lat:-14.7889, lon:-39.0494},
-  {id:'marau', name:'Marau', region:'State of Bahia', lat:-14.1167, lon:-39.0},
-  {id:'itubera', name:'Itubera', region:'State of Bahia', lat:-13.7333, lon:-39.15},
-  {id:'caraiva', name:'Caraiva', region:'Porto Seguro - BA', lat:-16.6167, lon:-39.1167},
-  {id:'morro-de-sao-paulo', name:'Morro de Sao Paulo', region:'Cairu - BA', lat:-13.3833, lon:-38.9167},
-  {id:'ilha-boipeba', name:'Ilha de Boipeba', region:null, rating:'4.8', lat:-13.55, lon:-38.9167},
-  {id:'maceio', name:'Maceio', region:null, lat:-9.6658, lon:-35.735},
-  {id:'itacare', name:'Itacare', region:null, lat:-14.2789, lon:-38.9967},
-  {id:'sao-luis', name:'Sao Luis', region:null, lat:-2.5297, lon:-44.3028},
-  {id:'lencois-maranhenses', name:'Lencois Maranhenses', region:null, lat:-2.5, lon:-43.0},
-  {id:'ouro-preto', name:'Ouro Preto', region:null, lat:-20.3856, lon:-43.5035},
-  {id:'capitolio', name:'Capitolio', region:null, lat:-20.6667, lon:-46.0},
-  {id:'rio-das-ostras', name:'Rio das Ostras', region:'State of Rio de Janeiro', lat:-22.5297, lon:-41.9456},
-  {id:'saquarema', name:'Saquarema', region:'State of Rio de Janeiro', lat:-22.92, lon:-42.51},
-  {id:'cumuruxatiba', name:'Cumuruxatiba', region:'Prado - BA', lat:-17.0833, lon:-39.1667},
-  {id:'imbassai', name:'Imbassai', region:'Mata de Sao Joao - BA', lat:-12.4667, lon:-38.0}
+  {id:'salvador', name:'Salvador', region:'BA', lat:-12.9777, lon:-38.5016},
+  {id:'recife', name:'Recife', region:'PE', lat:-8.0476, lon:-34.877},
+  {id:'foz-do-iguacu', name:'Foz do Iguaçu', region:'PR', lat:-25.5163, lon:-54.5854}
 ].map(p => ({ inItinerary:false, region:null, rating:null, start:null, end:null, order:null, lat:null, lon:null, source:'seed', ...p }));
 
 const PX = { xmin:227.59, xmax:322.469, ymin:520.14, ymax:618.464 };
@@ -1004,7 +977,7 @@ function migrateOldData(){
     const pp = localStorage.getItem('brazil-places');
     const pr = localStorage.getItem('brazil-rates');
     if(pe || pp){
-      const tr = defaultTracker('Brasil, agosto 2026', 'BRL', '2026-08-01');
+      const tr = defaultTracker('Viaje importado', 'BRL', '2025-11-02');
       tr.id = 'tr-brazil-2026';
       if(pp) tr.places = JSON.parse(pp);
       if(pe) tr.expenses = JSON.parse(pe);
@@ -1035,21 +1008,21 @@ function loadData(){
       if(migrated){
         trackers = [migrated];
       } else {
-        const tr = defaultTracker('Mi primer tracker', 'ARS');
+        const tr = defaultTracker('Viaje de ejemplo', 'BRL', '2025-11-02');
         tr.places = [...SEED_PLACES];
         trackers = [tr];
       }
     }
   }catch(e){
     console.error('Load error', e);
-    trackers = [defaultTracker('Mi tracker', 'ARS')];
+    trackers = [defaultTracker('Viaje de ejemplo', 'BRL')];
   }
   try{
     activeTrackerId = localStorage.getItem(ACTIVE_KEY);
     if(!trackers.some(t2=>t2.id===activeTrackerId)) activeTrackerId = trackers[0]?.id;
   }catch(e){ activeTrackerId = trackers[0]?.id; }
   if(!trackers.length){
-    const tr = defaultTracker('Mi tracker', 'ARS');
+    const tr = defaultTracker('Viaje de ejemplo', 'BRL');
     trackers = [tr];
     activeTrackerId = tr.id;
   }
@@ -1695,7 +1668,7 @@ function haversineKm(lat1, lon1, lat2, lon2){
   return 2*R*Math.asin(Math.sqrt(a));
 }
 
-// heurísticas aproximadas por modo (BRL), basadas en recorridos reales de Brasil
+// heurísticas aproximadas por modo (BRL), basadas en recorridos típicos por Brasil
 const BUS_SPEED = 60;
 const BUS_BASE = 18, BUS_PER_KM = 0.18;
 const BLA = { base:30, perKm:0.09, speed:80 };          // BlaBlaCar
